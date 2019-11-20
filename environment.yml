@@ -9,5 +9,4 @@ dependencies:
 - scipy==1.2.1
 - matplotlib=3.0.3
 - qutip==4.4.0
-- imagemagick=7.0.8_49
 - mendeleev=0.5.1
