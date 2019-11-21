@@ -118,6 +118,8 @@ class MuonNuclearInteraction(object):
                     max_ab = -1.
                     l = -1
                     for is_n, isotope in enumerate(e.isotopes):
+                        if isotope.abundance is None:
+                            continue
                         if isotope.abundance > max_ab:
                             l = is_n
                             max_ab = isotope.abundance
