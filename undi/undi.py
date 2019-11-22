@@ -26,7 +26,7 @@ def rand_rotation_matrix(deflection=1.0, randnums=None):
     """
     Creates a random rotation matrix.
     
-    deflection: the magnitude of the rotation. For 0, no rotation; for 1, competely random
+    deflection: the magnitude of the rotation. For 0, no rotation; for 1, completely random
     rotation. Small deflection => small perturbation.
     randnums: 3 random numbers in the range [0, 1]. If `None`, they will be auto-generated.
     """
@@ -79,12 +79,19 @@ class MuonNuclearInteraction(object):
         return (''.join(filter(str.isdigit, s)) or None,  
                 ''.join(filter(str.isalpha, s)) or None) 
 
-    def __init__(self, atoms, logger = None):
+    def __init__(self, atoms, logger = None, log_level = ''):
         
         self.logger = logger or logging.getLogger(__name__)
-        
+
+        if log_level:
+            level_config = {'debug': logging.DEBUG, 'info': logging.INFO}
+            try:
+                self.logger.setLevel(level_config[log_level.lower()])
+            except:
+                self.logger.warning("Invalid logging level")
+
         self.Hdim = 1
-        
+
         for i, atom in enumerate(atoms):
             spin  = atom.get('Spin', None)
             label = atom.get('Label', None)
@@ -213,11 +220,14 @@ class MuonNuclearInteraction(object):
         for i, a_i in enumerate(atoms):
             l = a_i['Spin']
             if (l > 0.5):
-                EFG = a_i['EFGTensor']
+                EFG = a_i.get('EFGTensor', None)
+                Q = a_i.get('ElectricQuadrupoleMoment', None)
+                if (EFG is None) or (Q is None):
+                    self.logger.info('Skipped quadrupolar coupling for atom {} {}'.format(i, a_i['Label']))
+                    continue
                 I  = a_i['Operators']
-                Q = a_i['ElectricQuadrupoleMoment']
                 # Quadrupole 
-                self.logger.info('Adding quadrupolar contribution: ', J_to_neV * (elementary_charge * Q /(2*l *(2*l -1))) * EFG[0,0])
+                self.logger.info('Adding quadrupolar contribution: {}'.format(J_to_neV * (elementary_charge * Q /(2*l *(2*l -1))) * EFG[0,0]))
                 H += J_to_neV * (elementary_charge * Q /(2*l *(2*l -1))) * (qdot(I, qMdotV(EFG,I)))
 
         return H
@@ -314,7 +324,7 @@ class MuonNuclearInteraction(object):
         ediffs *= one_over_plank2pi
         
         for idx in range(len(evals)):
-            self.logger.info('Adding signal...', idx)
+            self.logger.info('Adding signal {}...'.format(idx))
             for jdx in range(len(evals)):
                 signal += np.exp( 1.j*ediffs[idx,jdx]*tlist ) * w[idx,jdx] # 6.582117e-7 =planck2pi [neV*s]
         
@@ -354,9 +364,9 @@ class MuonNuclearInteraction(object):
                         signal += np.exp( 1.j*ediffs[idx,jdx]*tlist ) * w[idx,jdx] # 6.582117e-7 =planck2pi [neV*s]
                     else:
                         signal += w[idx,jdx] 
-                        self.logger.info('Skipped (freq)', idx, jdx, ediffs[idx,jdx]*tmax)
+                        self.logger.info('Skipped (freq) {} {} {}'.format(idx, jdx, ediffs[idx,jdx]*tmax) )
                 else:
-                    self.logger.info('Skipped (weight)', idx, jdx, w[idx,jdx] )
+                    self.logger.info('Skipped (weight) {} {} {}'.format(idx, jdx, w[idx,jdx]) )
         return ( np.real_if_close(signal) / self.Hdim )
 
 
@@ -385,7 +395,7 @@ if __name__ == '__main__':
     tlist = np.linspace(0, 10e-6, 100)
 
     # Define main class
-    NS = MuonNuclearInteraction(atoms)
+    NS = MuonNuclearInteraction(atoms, log_level='info')
     # cutoff the dipolar interaction in order to avoid F-F term
     NS.load_or_solve_H(cutoff=1.2 * angtom)
 
