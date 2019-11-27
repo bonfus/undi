@@ -257,6 +257,9 @@ class MuonNuclearInteraction(object):
         return np.real_if_close(r/3.)
 
     def time_evolve_trotter(self, dt, steps, k=3.):
+        """
+        This subroutine does Trotter expnsion of the matrix
+        """
         from time import time
         atoms = self.atoms
         for atom in atoms:
@@ -283,10 +286,15 @@ class MuonNuclearInteraction(object):
         return np.real_if_close(r/3.)
 
     def celio(self, dt, steps, k=3.):
+        """
+        This implements Celio's approximation as in Phys. Rev. Lett. 56 2720
+        """
 
+        # internal copy
         atoms = self.atoms
 
-        # in spin we list all possible states
+        # generate maximally mixed state for nuclei (all states populated with random phase)
+        # also record muon index to later add polarized state
         mu_idx = -1
         nuclear_states = []
         for l, atom in enumerate(atoms):
@@ -296,7 +304,7 @@ class MuonNuclearInteraction(object):
                 mu_idx = l
                 continue
 
-            # Create dephased nuclei
+            # Create dephased states for current nucleus
             S = int(2*atom['Spin']+1)
             psi = Qobj( np.exp(-2.j * np.pi * np.random.rand(S)), type='ket')
             nuclear_states.append(psi)
@@ -350,6 +358,9 @@ class MuonNuclearInteraction(object):
         return np.real_if_close(r/3.)
 
     def compute(self, cutoff = 10.0E-10):
+        """
+        This generates the Hamiltonian and finds eigenstates
+        """
         # generate Hamiltonian
         self.create_H(cutoff)
 
@@ -358,6 +369,9 @@ class MuonNuclearInteraction(object):
 
 
     def load_or_solve_H(self, cutoff = 10.0e-10, load_eigenpairs = False, eigenpairs_file=''):
+        """
+        This is a helper function to solve or load previous results.
+        """
 
         if load_eigenpairs == False:
             self.logger.info("Diagonalizing matrix...")
@@ -372,6 +386,9 @@ class MuonNuclearInteraction(object):
             self.ekets = data['ekets']
 
     def sample_spherical(self):
+        """
+        This computes the elements to be later traced. Simple and slow implementation.
+        """
 
         atoms = self.atoms
         for atom in atoms:
@@ -390,6 +407,9 @@ class MuonNuclearInteraction(object):
         return (AA[:,:,0]+AA[:,:,1]+AA[:,:,2])*0.3333333333
 
     def fast_sample_spherical(self):
+        """
+        Same as above, but with numpy vectorized operations.
+        """
 
         atoms = self.atoms
         ekets = self.ekets
