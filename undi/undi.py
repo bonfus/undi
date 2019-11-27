@@ -335,16 +335,17 @@ class MuonNuclearInteraction(object):
 
         r = np.zeros(steps, dtype=np.complex)
         for i in range(steps):
-            U = dU ** i # make one more step
-            # Evolve psix and measure along x (we don't want to rotate the system!)
-            psi_t = U * psix
-            r[i] += (psi_t.dag() * Ox * psi_t)[0,0]
+            # set spin along x and measure along x (we don't want to rotate the system!)
+            r[i] += (psix.dag() * Ox * psix)[0,0]
             # same as above for y
-            psi_t = U * psiy
-            r[i] += (psi_t.dag() * Oy * psi_t)[0,0]
+            r[i] += (psiy.dag() * Oy * psiy)[0,0]
             # same as above for z
-            psi_t = U * psiz
-            r[i] += (psi_t.dag() * Oz * psi_t)[0,0]
+            r[i] += (psiz.dag() * Oz * psiz)[0,0]
+
+            # Evolve psi
+            psix = dU * psix
+            psiy = dU * psiy
+            psiz = dU * psiz
 
         return np.real_if_close(r/3.)
 
