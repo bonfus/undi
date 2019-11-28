@@ -285,18 +285,26 @@ class MuonNuclearInteraction(object):
 
         return np.real_if_close(r/3.)
 
-    def celio(self, dt, steps, k=3.):
+    def celio(self, dt, steps, k=1.):
         """
         This implements Celio's approximation as in Phys. Rev. Lett. 56 2720
         """
+        from time import time
+
+        def swap(l, p1, p2):
+            a = list(range(0,l))
+            a[p1], a[p2] = a[p2], a[p1]
+            return a
 
         # internal copy
         atoms = self.atoms
+        n_atoms = len(atoms)
 
         # generate maximally mixed state for nuclei (all states populated with random phase)
         # also record muon index to later add polarized state
         mu_idx = -1
         nuclear_states = []
+        nuclear_spins  = []
         for l, atom in enumerate(atoms):
             # record muon position in list. To be used to insert polarized state
             if atom['Label'] == 'mu':
@@ -306,6 +314,8 @@ class MuonNuclearInteraction(object):
 
             # Create dephased states for current nucleus
             S = int(2*atom['Spin']+1)
+            nuclear_spins.append(S)
+
             psi = Qobj( np.exp(-2.j * np.pi * np.random.rand(S)), type='ket')
             nuclear_states.append(psi)
 
@@ -336,13 +346,48 @@ class MuonNuclearInteraction(object):
         #   dU = (-1j * self.H * self.one_over_plank2pi * dt).expm()
         #
         # Trotter:
+        #
+        #
+        #    probably better to use
+        #      ee,vv=h.eigenstates()
+        #      np.exp(-1.j *ee[0])*(vv[0]*vv[0].dag()) + np.exp(-1.j *ee[1])*(vv[1]*vv[1].dag()) + np.exp(-1.j *ee[2])*(vv[2]*vv[2].dag()) + np.exp(-1.j *ee[3])*(vv[3]*vv[3].dag())
+        #
         dU = qeye(Oz.dims[0])
-        for h in self.Hs:
-            dU *= (-1j * h * self.one_over_plank2pi * dt / k).expm()
-        dU = dU**k
+        for i, h in enumerate(self.Hs):
+
+            other_spins = nuclear_spins.copy()
+            # current nuclear spin will be in position 0,
+            # we'll need to swap it later so we store where original
+            # position zero went.
+            other_spins[i] = nuclear_spins[0]
+
+            strt=time()
+            hh = h.ptrace([0, i+1]) / np.prod(other_spins[1:]) # we traced out identities, let's normalize
+
+            print('ptrace: ', time()-strt); strt=time()
+
+            # evolution operator on the small matrix
+            uu = (-1j * hh * self.one_over_plank2pi * dt / k).expm()
+
+            print('expm: ', time()-strt); strt=time()
+
+            # expand the hilbert space with unitary evolution on other spins
+            big_uu = tensor([uu, ] + [qeye(s) for s in other_spins[1:]])
+            print('bigu: ', time()-strt); strt=time()
+
+            # swap what is currently position 1 to i-th position and create
+            # evolution operator in large hilbert space.
+            dU *= big_uu.permute(swap(n_atoms,1,i+1))
+            print('bigu_mult: ', time()-strt); strt=time()
+
+        strt=time()
+        if k > 1.01:
+            dU = dU**k
+        print('**k: ', time()-strt); strt=time()
 
         r = np.zeros(steps, dtype=np.complex)
         for i in range(steps):
+            strt=time()
             # set spin along x and measure along x (we don't want to rotate the system!)
             r[i] += (psix.dag() * Ox * psix)[0,0]
             # same as above for y
@@ -350,10 +395,12 @@ class MuonNuclearInteraction(object):
             # same as above for z
             r[i] += (psiz.dag() * Oz * psiz)[0,0]
 
+            print('a measure: ', time()-strt); strt=time()
             # Evolve psi
             psix = dU * psix
             psiy = dU * psiy
             psiz = dU * psiz
+            print('evolution: ', time()-strt); strt=time()
 
         return np.real_if_close(r/3.)
 
