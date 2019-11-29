@@ -22,6 +22,7 @@ elementary_charge=1.6021766E-19 # Coulomb = ampere ⋅ second
 # Conversions
 J_to_neV = 6.241508e27 # 1 J = 6.241508e27 neV
 planck2pi_alt = 6.582117e-7 #planck2pi [neV*s]
+one_over_plank2pi = 1. / 6.582117e-7   # 6.582117e-7 =planck2pi [neV*s]
 
 def rand_rotation_matrix(deflection=1.0, randnums=None):
     """
@@ -74,12 +75,65 @@ class MuonNuclearInteraction(object):
               'H' : 2*np.pi*42.577e6,
               'V' : 2*np.pi*11.212944e6} # (sT)^-1
 
-    one_over_plank2pi = 1. / 6.582117e-7   # 6.582117e-7 =planck2pi [neV*s]
 
     @staticmethod
     def splitIsotope(s):
         return (''.join(filter(str.isdigit, s)) or None,
                 ''.join(filter(str.isalpha, s)) or None)
+    @staticmethod
+    def dipolar_interaction(a_i, a_j):
+        gamma_i, p_i, s_i = a_i['Gamma'], a_i['Position'], a_i['Spin']
+        gamma_j, p_j, s_j = a_j['Gamma'], a_j['Position'], a_j['Spin']
+
+        d = p_j-p_i
+        n_of_d = np.linalg.norm(d)
+        u = d/n_of_d
+
+        # dipolar interaction
+        Bd=(mu_0*gamma_i*gamma_j*(hbar**2))/(4*np.pi*(n_of_d**3))
+        Bd*=6.241508e27 # to neV
+
+        I = a_i['Operators']
+        J = a_j['Operators']
+
+        return -Bd * (3*qdot(I,u)*qdot(J,u) - qdot(I,J))
+
+    @staticmethod
+    def quadrupolar_interaction(a_i):
+        l = a_i['Spin']
+
+        if (l < 0.5001):
+            raise RuntimeError("Ivalid spin")
+
+        EFG = a_i['EFGTensor']
+        Q = a_i['ElectricQuadrupoleMoment']
+        I  = a_i['Operators']
+
+        # Quadrupole
+        cost = J_to_neV * (elementary_charge * Q /(2*l *(2*l -1)))
+        return( \
+                cost * (qdot(I, qMdotV(EFG,I))) , \
+                cost \
+                )
+
+    @staticmethod
+    def create_hilbert_space(atoms):
+        n_nuclei = len(atoms)
+
+        for i in range(n_nuclei):
+            Lx = tensor(* [spin_Jx(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
+            Ly = tensor(* [spin_Jy(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
+            Lz = tensor(* [spin_Jz(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
+            atoms[i]['Operators'] = (Lx, Ly, Lz)
+
+            # add also observables in the case of muon
+            if atoms[i]['Label'] == 'mu':
+                Ox = tensor(* [sigmax() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
+                Oy = tensor(* [sigmay() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
+                Oz = tensor(* [sigmaz() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
+                atoms[i]['Observables'] = (Ox, Oy, Oz)
+
+        return Oz.dims
 
     def __init__(self, atoms, logger = None, log_level = ''):
 
@@ -168,69 +222,50 @@ class MuonNuclearInteraction(object):
         """
 
         atoms = self.atoms
-        n_nuclei = len(atoms)
 
-        for i in range(n_nuclei):
-            Lx = tensor(* [spin_Jx(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-            Ly = tensor(* [spin_Jy(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-            Lz = tensor(* [spin_Jz(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-            atoms[i]['Operators'] = (Lx, Ly, Lz)
+        # Generate Hilber space and operators
+        dims = self.create_hilbert_space(atoms)
 
-            # add also observables in the case of muon
-            if atoms[i]['Label'] == 'mu':
-                Ox = tensor(* [sigmax() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-                Oy = tensor(* [sigmay() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-                Oz = tensor(* [sigmaz() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-                atoms[i]['Observables'] = (Ox, Oy, Oz)
+        # Empty Hamiltonian
+        H = Qobj(dims=dims)
 
-        # Use last operator to get dimensions...not nice but does the job.
-        H = Qobj(dims=Lx.dims)
-        self.Hs = []
-        # Two body dipolar interaction
+        # Dipolar interaction
         for i, a_i in enumerate(atoms):
             for j, a_j in enumerate(atoms):
 
                 if j <= i:
                     continue
 
-                gamma_i, r_i, s_i = a_i['Gamma'], a_i['Position'], a_i['Spin']
-                gamma_j, r_j, s_j = a_j['Gamma'], a_j['Position'], a_j['Spin']
-
-                d = r_j-r_i
+                p_i = a_i['Position']
+                p_j = a_j['Position']
+                d = p_j-p_i
                 n_of_d = np.linalg.norm(d)
-                u = d/n_of_d
 
                 # cutoff for the interaction
                 if n_of_d > cutoff:
+                    self.logger.info("Skipped interaction between {} and {} with distance {}".format( a_i['Label'], a_j['Label'], n_of_d ) )
                     continue
 
                 self.logger.info("Adding interaction between {} and {} with distance {}".format( a_i['Label'], a_j['Label'], n_of_d ) )
 
-                # dipolar interaction
-                Bd=(mu_0*gamma_i*gamma_j*(hbar**2))/(4*np.pi*(n_of_d**3))
-                Bd*=6.241508e27 # to neV
 
-                I = a_i['Operators']
-                J = a_j['Operators']
+                H += self.dipolar_interaction(a_i, a_j)
 
-                H += -Bd * (3*qdot(I,u)*qdot(J,u) - qdot(I,J))
-                self.Hs.append(-Bd * (3*qdot(I,u)*qdot(J,u) - qdot(I,J)))
+                self.logger.info('Dipolar contribution between {}<->{}, r={}'.format(i,j, n_of_d))
 
-                self.logger.info('Added Dipolar contribution: {}'.format(Bd))
-
-        # Quadrupolar atoms
+        # Quadrupolar interaction
         for i, a_i in enumerate(atoms):
-            l = a_i['Spin']
-            if (l > 0.5):
+
+            if (a_i['Spin'] > 0.5):
                 EFG = a_i.get('EFGTensor', None)
                 Q = a_i.get('ElectricQuadrupoleMoment', None)
+
                 if (EFG is None) or (Q is None):
-                    self.logger.info('Skipped quadrupolar coupling for atom {} {}'.format(i, a_i['Label']))
                     continue
-                I  = a_i['Operators']
-                # Quadrupole
-                self.logger.info('Adding quadrupolar contribution: {}'.format(J_to_neV * (elementary_charge * Q /(2*l *(2*l -1))) * EFG[0,0]))
-                H += J_to_neV * (elementary_charge * Q /(2*l *(2*l -1))) * (qdot(I, qMdotV(EFG,I)))
+
+                Q, strengh = quadrupolar_interaction(a_i)
+                self.logger.info('Quadrupolar coupling for atom {} {} is {}'.format(i, a_i['Label'], strengh))
+                H += Q
 
         self.H = H
 
@@ -245,7 +280,7 @@ class MuonNuclearInteraction(object):
         rhoy = (1./self.Hdim) * Oy
         rhoz = (1./self.Hdim) * Oz
 
-        dU = (-1j * self.H * self.one_over_plank2pi * dt).expm()
+        dU = (-1j * self.H * one_over_plank2pi * dt).expm()
 
         r = np.zeros(steps, dtype=np.complex)
         for i in range(steps):
@@ -273,7 +308,7 @@ class MuonNuclearInteraction(object):
         # compose U operator
         dU = qeye(Oz.dims[0])
         for h in self.Hs:
-            dU *= (-1j * h * self.one_over_plank2pi * dt / k).expm()
+            dU *= (-1j * h * one_over_plank2pi * dt / k).expm()
         dU = dU**k
 
         r = np.zeros(steps, dtype=np.complex)
@@ -303,47 +338,39 @@ class MuonNuclearInteraction(object):
         # generate maximally mixed state for nuclei (all states populated with random phase)
         # also record muon index to later add polarized state
         mu_idx = -1
-        nuclear_states = []
-        nuclear_spins  = []
         for l, atom in enumerate(atoms):
             # record muon position in list. To be used to insert polarized state
             if atom['Label'] == 'mu':
-                Ox, Oy, Oz = atom['Observables']
                 mu_idx = l
                 continue
-
-            # Create dephased states for current nucleus
-            S = int(2*atom['Spin']+1)
-            nuclear_spins.append(S)
-
-            psi = Qobj( np.exp(-2.j * np.pi * np.random.rand(S)), type='ket')
-            nuclear_states.append(psi)
-
         if mu_idx < 0:
-            print('error')
+            raise RuntimeError("Where is the muon!?!")
 
-        # Insert muon along +z
-        nuclear_states.insert(mu_idx, basis(2,0))
-        psiz = tensor(nuclear_states)
+        Subspaces = []
+        for l, atom in enumerate(atoms):
+            if l == mu_idx:
+                continue
 
-        # Insert muon along +x (after having removed the previous state)
-        nuclear_states.pop(mu_idx) ; nuclear_states.insert(mu_idx, 0.7071067811865475*(basis(2,0)+basis(2,1)))
-        psix = tensor(nuclear_states)
+            couple = [atoms[mu_idx].copy(),  atoms[l].copy()]
 
-        # Insert muon along +y (after having removed the previous state)
-        nuclear_states.pop(mu_idx) ; nuclear_states.insert(mu_idx, 0.7071067811865475*(basis(2,0)+1.j*basis(2,1)))
-        psiy = tensor(nuclear_states)
+            dims = self.create_hilbert_space(couple)
 
-        # Normalize
-        psix = psix * np.sqrt(2./self.Hdim)
-        psiy = psiy * np.sqrt(2./self.Hdim)
-        psiz = psiz * np.sqrt(2./self.Hdim)
+            H = self.dipolar_interaction(*couple)
 
+            NucHdim = int(2*atom['Spin']+1)
+            NuclearPsi = Qobj( np.exp(-2.j * np.pi * np.random.rand(NucHdim)), type='ket')
 
-        # Computer time evolution operator
+            Subspaces.append({'H': H, 'NuclearPsi': NuclearPsi, 'NucHdim': NucHdim})
+
+        # Convert list of dict to dict of list
+        SubspacesInfo = {k: [dic[k] for dic in Subspaces] for k in Subspaces[0]} # https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
+
+        # Computer time evolution operator.
+        #  we will put the muon as the first particle
         #
         # Exact H
-        #   dU = (-1j * self.H * self.one_over_plank2pi * dt).expm()
+        #   H = self.create_H(atoms)
+        #   dU = (-1j * self.H * one_over_plank2pi * dt).expm()
         #
         # Trotter:
         #
@@ -352,22 +379,20 @@ class MuonNuclearInteraction(object):
         #      ee,vv=h.eigenstates()
         #      np.exp(-1.j *ee[0])*(vv[0]*vv[0].dag()) + np.exp(-1.j *ee[1])*(vv[1]*vv[1].dag()) + np.exp(-1.j *ee[2])*(vv[2]*vv[2].dag()) + np.exp(-1.j *ee[3])*(vv[3]*vv[3].dag())
         #
-        dU = qeye(Oz.dims[0])
-        for i, h in enumerate(self.Hs):
 
-            other_spins = nuclear_spins.copy()
+        dU = qeye([2,] +  SubspacesInfo['NucHdim'])
+        for i, subspace in enumerate(Subspaces):
+
+            other_spins = SubspacesInfo['NucHdim'].copy()
             # current nuclear spin will be in position 0,
             # we'll need to swap it later so we store where original
             # position zero went.
-            other_spins[i] = nuclear_spins[0]
+            other_spins[i] = other_spins[0]
 
             strt=time()
-            hh = h.ptrace([0, i+1]) / np.prod(other_spins[1:]) # we traced out identities, let's normalize
-
-            print('ptrace: ', time()-strt); strt=time()
-
+            hh = subspace['H']
             # evolution operator on the small matrix
-            uu = (-1j * hh * self.one_over_plank2pi * dt / k).expm()
+            uu = (-1j * hh * one_over_plank2pi * dt / k).expm()
 
             print('expm: ', time()-strt); strt=time()
 
@@ -384,6 +409,28 @@ class MuonNuclearInteraction(object):
         if k > 1.01:
             dU = dU**k
         print('**k: ', time()-strt); strt=time()
+
+        # Muon observables in big space
+        Ox = tensor(sigmax(), *[qeye(S) for S in SubspacesInfo['NucHdim']])
+        Oy = tensor(sigmay(), *[qeye(S) for S in SubspacesInfo['NucHdim']])
+        Oz = tensor(sigmaz(), *[qeye(S) for S in SubspacesInfo['NucHdim']])
+
+
+        # Nuclear psi with randoms phases generated before.
+        nuclear_states = SubspacesInfo['NuclearPsi']
+
+        # Insert muon along +z
+        psiz = tensor(basis(2,0), *nuclear_states)
+        # Insert muon along +x (after having removed the previous state)
+        psix = tensor(0.7071067811865475*(basis(2,0)+basis(2,1)), *nuclear_states)
+        # Insert muon along +y (after having removed the previous state)
+        psiy = tensor(0.7071067811865475*(basis(2,0)+1.j*basis(2,1)), *nuclear_states)
+
+        # Normalize
+        Normalization = np.sqrt(1./np.prod(SubspacesInfo['NucHdim']))
+        psix = psix * Normalization
+        psiy = psiy * Normalization
+        psiz = psiz * Normalization
 
         r = np.zeros(steps, dtype=np.complex)
         for i in range(steps):
@@ -504,7 +551,7 @@ class MuonNuclearInteraction(object):
 
         # this does e_i - e_j for all eigenvalues
         ediffs  = np.subtract.outer(evals, evals)
-        ediffs *= self.one_over_plank2pi
+        ediffs *= one_over_plank2pi
 
         for idx in range(len(evals)):
             self.logger.info('Adding signal {}...'.format(idx))
@@ -525,7 +572,7 @@ class MuonNuclearInteraction(object):
 
         # makes the difference of all eigenvalues
         ediffs  = np.subtract.outer(evals, evals)
-        ediffs *= self.one_over_plank2pi
+        ediffs *= one_over_plank2pi
 
         order_w = False
         if order_w:
