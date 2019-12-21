@@ -21,8 +21,8 @@ elementary_charge=1.6021766E-19 # Coulomb = ampere ⋅ second
 
 # Conversions
 J_to_neV = 6.241508e27 # 1 J = 6.241508e27 neV
-planck2pi_alt = 6.582117e-7 #planck2pi [neV*s]
-one_over_plank2pi = 1. / 6.582117e-7   # 6.582117e-7 =planck2pi [neV*s]
+planck2pi_neVs = 6.582117e-7 #planck2pi [neV*s]
+one_over_plank2pi_neVs = 1. / planck2pi_neVs
 
 def rand_rotation_matrix(deflection=1.0, randnums=None):
     """
@@ -80,6 +80,7 @@ class MuonNuclearInteraction(object):
     def splitIsotope(s):
         return (''.join(filter(str.isdigit, s)) or None,
                 ''.join(filter(str.isalpha, s)) or None)
+
     @staticmethod
     def dipolar_interaction(a_i, a_j):
         gamma_i, p_i, s_i = a_i['Gamma'], a_i['Position'], a_i['Spin']
@@ -109,12 +110,58 @@ class MuonNuclearInteraction(object):
         Q = a_i['ElectricQuadrupoleMoment']
         I  = a_i['Operators']
 
+        # PAS
+        ee, ev = np.linalg.eig(EFG)
+        Vxx,Vyy,Vzz = np.sort(np.abs(ee))
+
+        # declare just in case EFG is zero
+        eta = 0
+        if Vzz >= 0.00001:
+            eta = (Vxx-Vyy)/Vzz
+
+        E_q = J_to_neV * ( elementary_charge * Q * Vzz / (4*l *(2*l -1)) )
+
+        omega_q = E_q * one_over_plank2pi_neVs
+
         # Quadrupole
-        cost = J_to_neV * (elementary_charge * Q /(2*l *(2*l -1)))
+        cost = J_to_neV * (elementary_charge * Q /(4*l *(2*l -1)))
         return( \
                 cost * (qdot(I, qMdotV(EFG,I))) , \
-                cost \
+                (omega_q, eta) \
                 )
+
+
+    @staticmethod
+    def muon_induced_efg(a_i, mu):
+        l = a_i['Spin']
+
+        if (l < 0.5001):
+            raise RuntimeError("Ivalid spin")
+
+        I = a_i['Operators']
+
+        n = a_i['Position'] - mu['Position']
+        n /= np.linalg.norm(n)
+
+        E_q = planck2pi_neVs * a_i['OmegaQmu']
+
+        # Quadrupole
+
+        return E_q * ( qdot(n, I) * qdot(n, I) - 0.33333333333*(l * (l+1)))
+
+    @staticmethod
+    def custom_term(a_i):
+        I = a_i['Operators']
+        Ix, Iy, Iz = I
+        p = a_i['Position']
+        L = a_i['Spin']
+        expression = a['CustomHamiltonianTerm']
+        return eval(expression)
+
+    @staticmethod
+    def external_field(atom, H):
+
+        return - planck2pi_neVs * atom['Gamma'] * qdot(atom['Operators'], H)
 
     @staticmethod
     def create_hilbert_space(atoms):
@@ -135,10 +182,12 @@ class MuonNuclearInteraction(object):
 
         return Oz.dims
 
-    def __init__(self, atoms, logger = None, log_level = ''):
+    def __init__(self, atoms, external_field = [0.,0.,0.], logger = None, log_level = ''):
 
         # Make own copy to avoid overwriting of internal elements
         atoms = deepcopy(atoms)
+
+        self._ext_field = np.array(external_field)
 
         self.logger = logger or logging.getLogger(__name__)
 
@@ -216,6 +265,46 @@ class MuonNuclearInteraction(object):
         self.logger.info("Hilbert space is {} dimensional".format(self.Hdim))
         self.atoms = atoms
 
+    def set_extfield(self, external_field):
+        self._ext_field = np.array(external_field)
+
+    def translate_rotate_sample_vec(self, bring_this_to_z):
+        natoms = len(self.atoms)
+
+        # Bring muon to origin
+        for a in self.atoms:
+            if a['Label'] == 'mu':
+                mup = a['Position']
+        for i in range(natoms):
+            self.atoms[i]['Position'] = self.atoms[i]['Position'] - mup
+
+        def rotation_matrix_from_vectors(vec1, vec2):
+            """ Find the rotation matrix that aligns vec1 to vec2
+            :param vec1: A 3d "source" vector
+            :param vec2: A 3d "destination" vector
+            :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
+
+            https://stackoverflow.com/a/59204638
+            """
+            a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
+            v = np.cross(a, b)
+            c = np.dot(a, b)
+            s = np.linalg.norm(v)
+            kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+            rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+            return rotation_matrix
+
+        if not np.allclose(bring_this_to_z, np.array([0,0,1.])):
+            rmat = rotation_matrix_from_vectors(bring_this_to_z, np.array([0,0,1.]))
+        else:
+            rmat = np.eye(3)
+        irmat = np.linalg.inv(rmat)
+
+        for i in range(natoms):
+            self.atoms[i]['Position'] = rmat.dot(self.atoms[i]['Position'])
+            if 'EFGTensor' in self.atoms[i].keys():
+                self.atoms[i]['EFGTensor'] = np.dot(rmat, np.dot(self.atoms[i]['EFGTensor'], irmat))
+
     def create_H(self, cutoff = 10.0E-10):
         """
         cutoff is in Angstrom
@@ -228,6 +317,12 @@ class MuonNuclearInteraction(object):
 
         # Empty Hamiltonian
         H = Qobj(dims=dims)
+
+        # Find the muon, used later...
+        mu = None
+        for a in atoms:
+            if a['Label'] == 'mu':
+                mu = a
 
         # Dipolar interaction
         for i, a_i in enumerate(atoms):
@@ -260,12 +355,20 @@ class MuonNuclearInteraction(object):
                 EFG = a_i.get('EFGTensor', None)
                 Q = a_i.get('ElectricQuadrupoleMoment', None)
 
-                if (EFG is None) or (Q is None):
-                    continue
+                if (not EFG is None) and (not Q is None):
+                    Q, strengh = self.quadrupolar_interaction(a_i)
+                    self.logger.info('Quadrupolar coupling for atom {} {} is {}'.format(i, a_i['Label'], strengh))
+                    H += Q
 
-                Q, strengh = quadrupolar_interaction(a_i)
-                self.logger.info('Quadrupolar coupling for atom {} {} is {}'.format(i, a_i['Label'], strengh))
-                H += Q
+                # Muon induced quadrupolar interaction
+                if 'OmegaQmu' in a_i.keys():
+                    H += self.muon_induced_efg(a_i, mu)
+
+
+        # External field
+        if np.linalg.norm(self._ext_field) > 0.000001:
+            for a_i in atoms:
+                H += self.external_field(a_i, self._ext_field)
 
         self.H = H
 
@@ -280,7 +383,7 @@ class MuonNuclearInteraction(object):
         rhoy = (1./self.Hdim) * Oy
         rhoz = (1./self.Hdim) * Oz
 
-        dU = (-1j * self.H * one_over_plank2pi * dt).expm()
+        dU = (-1j * self.H * one_over_plank2pi_neVs * dt).expm()
 
         r = np.zeros(steps, dtype=np.complex)
         for i in range(steps):
@@ -307,8 +410,9 @@ class MuonNuclearInteraction(object):
 
         # compose U operator
         dU = qeye(Oz.dims[0])
+        # this is broken!!!
         for h in self.Hs:
-            dU *= (-1j * h * one_over_plank2pi * dt / k).expm()
+            dU *= (-1j * h * one_over_plank2pi_neVs * dt / k).expm()
         dU = dU**k
 
         r = np.zeros(steps, dtype=np.complex)
@@ -320,13 +424,14 @@ class MuonNuclearInteraction(object):
 
         return np.real_if_close(r/3.)
 
-    def celio(self, dt, steps, k=1.):
+    def celio(self, tlist, k=4, direction=[0,0,1.]):
         """
         This implements Celio's approximation as in Phys. Rev. Lett. 56 2720
         """
-        from time import time
 
         def swap(l, p1, p2):
+            # given a list of l elements, return a new one where p1 and p2
+            # have been swapped.
             a = list(range(0,l))
             a[p1], a[p2] = a[p2], a[p1]
             return a
@@ -335,8 +440,6 @@ class MuonNuclearInteraction(object):
         atoms = self.atoms
         n_atoms = len(atoms)
 
-        # generate maximally mixed state for nuclei (all states populated with random phase)
-        # also record muon index to later add polarized state
         mu_idx = -1
         for l, atom in enumerate(atoms):
             # record muon position in list. To be used to insert polarized state
@@ -357,99 +460,87 @@ class MuonNuclearInteraction(object):
 
             H = self.dipolar_interaction(*couple)
 
+            if (couple[1]['Spin'] > 0.5 and 'EFGTensor' in couple[1].keys()):
+                Q, info = self.quadrupolar_interaction(couple[1])
+                H += Q
+            if ( 'OmegaQmu' in couple[1].keys()):
+                H += self.muon_induced_efg(couple[1], couple[0])
+
+            if np.linalg.norm(self._ext_field) > 0.000001:
+                # Add field to atom
+                H += self.external_field(couple[1], self._ext_field)
+                # Add 1/Nth field to muon
+                H += self.external_field(couple[0], self._ext_field/(n_atoms-1))
+
+            # generate maximally mixed state for nuclei (all states populated with random phase)
             NucHdim = int(2*atom['Spin']+1)
             NuclearPsi = Qobj( np.exp(-2.j * np.pi * np.random.rand(NucHdim)), type='ket')
 
             Subspaces.append({'H': H, 'NuclearPsi': NuclearPsi, 'NucHdim': NucHdim})
 
         # Convert list of dict to dict of list
-        SubspacesInfo = {k: [dic[k] for dic in Subspaces] for k in Subspaces[0]} # https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
+        SubspacesInfo = {u: [dic[u] for dic in Subspaces] for u in Subspaces[0]} # https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
 
-        # Computer time evolution operator.
-        #  we will put the muon as the first particle
-        #
-        # Exact H
-        #   H = self.create_H(atoms)
-        #   dU = (-1j * self.H * one_over_plank2pi * dt).expm()
-        #
-        # Trotter:
-        #
-        #
-        #    probably better to use
-        #      ee,vv=h.eigenstates()
-        #      np.exp(-1.j *ee[0])*(vv[0]*vv[0].dag()) + np.exp(-1.j *ee[1])*(vv[1]*vv[1].dag()) + np.exp(-1.j *ee[2])*(vv[2]*vv[2].dag()) + np.exp(-1.j *ee[3])*(vv[3]*vv[3].dag())
-        #
 
-        dU = qeye([2,] +  SubspacesInfo['NucHdim'])
-        for i, subspace in enumerate(Subspaces):
+        def computeU(tt, k):
+            # Computer time evolution operator.
+            #  we will put the muon as the first particle
+            Us = []
+            for i, subspace in enumerate(Subspaces):
 
-            other_spins = SubspacesInfo['NucHdim'].copy()
-            # current nuclear spin will be in position 0,
-            # we'll need to swap it later so we store where original
-            # position zero went.
-            other_spins[i] = other_spins[0]
+                other_spins = SubspacesInfo['NucHdim'].copy()
+                # current nuclear spin will be in position 0,
+                # we'll need to swap it later so we store where original
+                # position zero went.
+                other_spins[i] = other_spins[0]
 
-            strt=time()
-            hh = subspace['H']
-            # evolution operator on the small matrix
-            uu = (-1j * hh * one_over_plank2pi * dt / k).expm()
+                hh = subspace['H']
+                # evolution operator on the small matrix
+                uu = (-1j * hh * one_over_plank2pi_neVs * tt / k).expm()
 
-            print('expm: ', time()-strt); strt=time()
+                # expand the hilbert space with unitary evolution on other spins
+                big_uu = tensor([uu, ] + [qeye(s) for s in other_spins[1:]])
 
-            # expand the hilbert space with unitary evolution on other spins
-            big_uu = tensor([uu, ] + [qeye(s) for s in other_spins[1:]])
-            print('bigu: ', time()-strt); strt=time()
+                # swap what is currently position 1 to i-th position and create
+                # evolution operator in large hilbert space.
+                Us.append( big_uu.permute(swap(n_atoms,1,i+1)) )
+            return Us
 
-            # swap what is currently position 1 to i-th position and create
-            # evolution operator in large hilbert space.
-            dU *= big_uu.permute(swap(n_atoms,1,i+1))
-            print('bigu_mult: ', time()-strt); strt=time()
 
-        strt=time()
-        if k > 1.01:
-            dU = dU**k
-        print('**k: ', time()-strt); strt=time()
+        r = np.zeros_like(tlist, dtype=np.complex)
+
+        # observe along direction
+        direction /= np.linalg.norm(direction)
+        o = qdot((sigmax(), sigmay(), sigmaz()), direction )
+
 
         # Muon observables in big space
-        Ox = tensor(sigmax(), *[qeye(S) for S in SubspacesInfo['NucHdim']])
-        Oy = tensor(sigmay(), *[qeye(S) for S in SubspacesInfo['NucHdim']])
-        Oz = tensor(sigmaz(), *[qeye(S) for S in SubspacesInfo['NucHdim']])
-
+        O = tensor(o, *[qeye(S) for S in SubspacesInfo['NucHdim']])
 
         # Nuclear psi with randoms phases generated before.
         nuclear_states = SubspacesInfo['NuclearPsi']
 
-        # Insert muon along +z
-        psiz = tensor(basis(2,0), *nuclear_states)
-        # Insert muon along +x (after having removed the previous state)
-        psix = tensor(0.7071067811865475*(basis(2,0)+basis(2,1)), *nuclear_states)
-        # Insert muon along +y (after having removed the previous state)
-        psiy = tensor(0.7071067811865475*(basis(2,0)+1.j*basis(2,1)), *nuclear_states)
+        # Insert muon polarized along positive quantization direction
+        e, v  = o.eigenstates()
+        mu_psi = v[1] if e[1] == 1.0 else v[0]
+
+        psi = tensor(mu_psi, *nuclear_states)
 
         # Normalize
         Normalization = np.sqrt(1./np.prod(SubspacesInfo['NucHdim']))
-        psix = psix * Normalization
-        psiy = psiy * Normalization
-        psiz = psiz * Normalization
+        psi = psi * Normalization
 
-        r = np.zeros(steps, dtype=np.complex)
-        for i in range(steps):
-            strt=time()
-            # set spin along x and measure along x (we don't want to rotate the system!)
-            r[i] += (psix.dag() * Ox * psix)[0,0]
-            # same as above for y
-            r[i] += (psiy.dag() * Oy * psiy)[0,0]
-            # same as above for z
-            r[i] += (psiz.dag() * Oz * psiz)[0,0]
-
-            print('a measure: ', time()-strt); strt=time()
+        dUs = computeU(tlist[1]-tlist[0], k)
+        for i, t in enumerate(tlist):
+            # measure
+            r[i] = (psi.dag() * O * psi)[0,0]
             # Evolve psi
-            psix = dU * psix
-            psiy = dU * psiy
-            psiz = dU * psiz
-            print('evolution: ', time()-strt); strt=time()
+            for _ in range(k):
+                for dU in dUs:
+                    psi = dU * psi
 
-        return np.real_if_close(r/3.)
+        return np.real_if_close(r)
+
 
     def compute(self, cutoff = 10.0E-10):
         """
@@ -462,7 +553,7 @@ class MuonNuclearInteraction(object):
         self.evals, self.ekets = self.H.eigenstates()
 
 
-    def load_or_solve_H(self, cutoff = 10.0e-10, load_eigenpairs = False, eigenpairs_file=''):
+    def load_eigenpairs(self, eigenpairs_file):
         """
         This is a helper function to solve or load previous results.
         """
@@ -473,13 +564,19 @@ class MuonNuclearInteraction(object):
             self.logger.info("done...")
             if eigenpairs_file:
                 np.savez(save_eigenpairs, evals = self.evals, ekets = self.ekets)
-        else:
-            data = np.load(eigenpairs_file)
 
-            self.evals = data['evals']
-            self.ekets = data['ekets']
+        data = np.load(eigenpairs_file)
+        self.evals = data['evals']
+        self.ekets = data['ekets']
 
-    def sample_spherical(self):
+    def store_eigenpairs(self, eigenpairs_file):
+        """
+        This is a helper function to solve or load previous results.
+        """
+        np.savez(save_eigenpairs, evals = self.evals, ekets = self.ekets)
+
+
+    def sample_spherical(self, direction=[0,0,1]):
         """
         This computes the elements to be later traced. Simple and slow implementation.
         """
@@ -491,16 +588,21 @@ class MuonNuclearInteraction(object):
 
         ekets = self.ekets
 
-        AA = np.zeros([len(ekets),len(ekets),3], dtype=np.complex)
+        AA = np.zeros([len(ekets),len(ekets)], dtype=np.complex)
+
+        # Chose measuring direction
+        if direction != [0,0,1]:
+            raise NotImplemented
+
+        O = Oz #qdot( (Ox, Oy, Oz), direction )
+
         for idx in range(len(ekets)):
             for jdx in range(len(ekets)):
-                AA[idx,jdx,0]=np.abs(Ox.matrix_element(ekets[idx],ekets[jdx]))**2
-                AA[idx,jdx,1]=np.abs(Oy.matrix_element(ekets[idx],ekets[jdx]))**2
-                AA[idx,jdx,2]=np.abs(Oz.matrix_element(ekets[idx],ekets[jdx]))**2
+                AA[idx,jdx] += np.abs(O.matrix_element(ekets[idx],ekets[jdx]))**2
 
-        return (AA[:,:,0]+AA[:,:,1]+AA[:,:,2])*0.3333333333
+        return AA
 
-    def fast_sample_spherical(self):
+    def fast_sample_spherical(self, direction=[0,0,1]):
         """
         Same as above, but with numpy vectorized operations.
         """
@@ -518,12 +620,14 @@ class MuonNuclearInteraction(object):
             allkets[:,idx] = ekets[idx].data.toarray()[:,0].reshape((len(ekets),1))
 
         w = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.float))
-        self.logger.info('Apply operators x')
-        w += np.square(  np.abs(   allkets.T*Ox.data.toarray()*allkets  )   ) # AAx = allkets.T*Ox.data.toarray()*allkets
-        self.logger.info('Apply operators y')
-        w += np.square(  np.abs(   allkets.T*Oy.data.toarray()*allkets  )   ) # AAy = allkets.T*Oy.data.toarray()*allkets
-        self.logger.info('Apply operators z')
-        w += np.square(  np.abs(   allkets.T*Oz.data.toarray()*allkets  )   ) # AAz = allkets.T*Oz.data.toarray()*allkets
+
+        if direction != [0,0,1]:
+            raise NotImplemented
+
+        #qdot( (Ox, Oy, Oz), direction )
+
+        w = np.square(  np.abs(   allkets.conjugate().T*Oz.data.toarray()*allkets  )   ) # AAx = allkets.T*Ox.data.toarray()*allkets
+
         #
         # This is what is done above...
         #for idx in range(len(ekets)):
@@ -532,10 +636,13 @@ class MuonNuclearInteraction(object):
         #        AA[idx,jdx,1]=np.abs(Oy.matrix_element(ekets[idx],ekets[jdx]))**2
         #        AA[idx,jdx,2]=np.abs(Oz.matrix_element(ekets[idx],ekets[jdx]))**2
         #
-        return w*0.3333333333333 #(np.square(np.abs(AAx)) + np.square(np.abs(AAy)) + np.square(np.abs(AAz)))/3.
+
+        return w
 
 
-    def generate_signal(self, tlist, approximated=False):
+    def polarization(self, tlist, cutoff = 10.0E-10, approximated=False):
+
+        self.compute(cutoff=cutoff)
 
         w=self.fast_sample_spherical()
 
@@ -551,7 +658,7 @@ class MuonNuclearInteraction(object):
 
         # this does e_i - e_j for all eigenvalues
         ediffs  = np.subtract.outer(evals, evals)
-        ediffs *= one_over_plank2pi
+        ediffs *= one_over_plank2pi_neVs
 
         for idx in range(len(evals)):
             self.logger.info('Adding signal {}...'.format(idx))
@@ -572,7 +679,7 @@ class MuonNuclearInteraction(object):
 
         # makes the difference of all eigenvalues
         ediffs  = np.subtract.outer(evals, evals)
-        ediffs *= one_over_plank2pi
+        ediffs *= one_over_plank2pi_neVs
 
         order_w = False
         if order_w:
@@ -626,15 +733,39 @@ if __name__ == '__main__':
 
     # Define main class
     NS = MuonNuclearInteraction(atoms, log_level='info')
-    # cutoff the dipolar interaction in order to avoid F-F term
-    NS.load_or_solve_H(cutoff=1.2 * angtom)
+    # Rotate sample such that axis z used to define the atomic positions
+    # is aligned with quantization axis which also happens to be z.
+    # Basically the next call will do nothing
+    NS.translate_rotate_sample_vec([0,0,1])
 
-    signal_FmuF = NS.generate_signal(tlist)
+    # cutoff the dipolar interaction in order to avoid F-F term
+    signal_FmuF = NS.polarization(tlist, cutoff=1.2 * angtom)
+    del NS
+
+    NS = MuonNuclearInteraction(atoms, log_level='info')
+    NS.translate_rotate_sample_vec([0,1,0])
+    signal_FmuF += NS.polarization(tlist, cutoff=1.2 * angtom)
+
+    NS = MuonNuclearInteraction(atoms, log_level='info')
+    NS.translate_rotate_sample_vec([1,0,0])
+    signal_FmuF += NS.polarization(tlist, cutoff=1.2 * angtom)
+
+    signal_FmuF /= 3.
 
     # no cutoff this time
-    NS.load_or_solve_H()
+    NS = MuonNuclearInteraction(atoms, log_level='info')
+    NS.translate_rotate_sample_vec([0,0,1])
+    signal_FmuF_with_Fdip = NS.polarization(tlist)
 
-    signal_FmuF_with_Fdip = NS.generate_signal(tlist)
+    NS = MuonNuclearInteraction(atoms, log_level='info')
+    NS.translate_rotate_sample_vec([0,1,0])
+    signal_FmuF_with_Fdip += NS.polarization(tlist)
+
+    NS = MuonNuclearInteraction(atoms, log_level='info')
+    NS.translate_rotate_sample_vec([1,0,0])
+    signal_FmuF_with_Fdip += NS.polarization(tlist)
+
+    signal_FmuF_with_Fdip /= 3.
 
     fig, axes = plt.subplots(1,1)
     axes.plot(tlist, signal_FmuF, label='Computed', linestyle='-')
