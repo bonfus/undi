@@ -474,9 +474,9 @@ class MuonNuclearInteraction(object):
 
             # generate maximally mixed state for nuclei (all states populated with random phase)
             NucHdim = int(2*atom['Spin']+1)
-            NuclearPsi = Qobj( np.exp(-2.j * np.pi * np.random.rand(NucHdim)), type='ket')
+            #NuclearPsi = Qobj( np.exp(2.j * np.pi * np.random.rand(NucHdim)), type='ket')
 
-            Subspaces.append({'H': H, 'NuclearPsi': NuclearPsi, 'NucHdim': NucHdim})
+            Subspaces.append({'H': H, 'NucHdim': NucHdim})
 
         # Convert list of dict to dict of list
         SubspacesInfo = {u: [dic[u] for dic in Subspaces] for u in Subspaces[0]} # https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
@@ -511,26 +511,31 @@ class MuonNuclearInteraction(object):
 
         # observe along direction
         direction /= np.linalg.norm(direction)
-        o = qdot((sigmax(), sigmay(), sigmaz()), direction )
-
+        if not np.allclose(direction,[0,0,1]):
+            raise RuntimeError("Polarization different from z not yet implemented (but it's easy to implement)")
+        o = sigmaz() # this would read qdot((sigmax(), sigmay(), sigmaz()), direction )
 
         # Muon observables in big space
         O = tensor(o, *[qeye(S) for S in SubspacesInfo['NucHdim']])
 
-        # Nuclear psi with randoms phases generated before.
-        nuclear_states = SubspacesInfo['NuclearPsi']
-
         # Insert muon polarized along positive quantization direction
-        e, v  = o.eigenstates()
-        mu_psi = v[1] if e[1] == 1.0 else v[0]
+        #   e, v  = o.eigenstates()
+        #   mu_psi = v[1] if e[1] == 1.0 else v[0]
+        #
+        # Actually below we set it as in basis(2,0), i.e. along z, such that
+        # all elements in HdimHalf:2*HdimHalf are zero!
 
-        psi = tensor(mu_psi, *nuclear_states)
+        HdimHalf = np.prod(SubspacesInfo['NucHdim'])
+        psi0 = np.zeros(2*HdimHalf, dtype=np.complex)
+        psi0[:HdimHalf] = np.exp(2.j * np.pi * np.random.rand(HdimHalf))
+        psi = Qobj( psi0, dims=O.dims, type='ket' )
 
         # Normalize
-        Normalization = np.sqrt(1./np.prod(SubspacesInfo['NucHdim']))
+        Normalization = 1./np.sqrt(HdimHalf)
         psi = psi * Normalization
 
         dUs = computeU(tlist[1]-tlist[0], k)
+
         for i, t in enumerate(tlist):
             # measure
             r[i] = (psi.dag() * O * psi)[0,0]
@@ -740,7 +745,6 @@ if __name__ == '__main__':
 
     # cutoff the dipolar interaction in order to avoid F-F term
     signal_FmuF = NS.polarization(tlist, cutoff=1.2 * angtom)
-    del NS
 
     NS = MuonNuclearInteraction(atoms, log_level='info')
     NS.translate_rotate_sample_vec([0,1,0])
