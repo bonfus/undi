@@ -78,11 +78,17 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def splitIsotope(s):
+        """
+        This function separates the isotope number and the element name.
+        """
         return (''.join(filter(str.isdigit, s)) or None,
                 ''.join(filter(str.isalpha, s)) or None)
 
     @staticmethod
     def dipolar_interaction(a_i, a_j):
+        """
+        Dipolar interaction between atom a_i and atom a_j.
+        """
         gamma_i, p_i, s_i = a_i['Gamma'], a_i['Position'], a_i['Spin']
         gamma_j, p_j, s_j = a_j['Gamma'], a_j['Position'], a_j['Spin']
 
@@ -101,6 +107,10 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def quadrupolar_interaction(a_i):
+        """
+        Quadrupolar interaction for atom a_i in the electric field gradient
+        described by 'EFGTensor'.
+        """
         l = a_i['Spin']
 
         if (l < 0.5001):
@@ -133,6 +143,9 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def muon_induced_efg(a_i, mu):
+        """
+        Operator for EFG directed along muon-atom direction.
+        """
         l = a_i['Spin']
 
         if (l < 0.5001):
@@ -160,7 +173,9 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def external_field(atom, H):
-
+        """
+        Lorentz term for atom in the magnetic field H
+        """
         return - planck2pi_neVs * atom['Gamma'] * qdot(atom['Operators'], H)
 
     @staticmethod
@@ -373,56 +388,35 @@ class MuonNuclearInteraction(object):
         self.H = H
 
     def time_evolve_qutip(self, dt, steps):
+        """
+        Clear and simple translation into python of textbook description.
+        Never actually used.
+        """
 
         atoms = self.atoms
+        partial_densities = []
         for atom in atoms:
             if atom['Label'] == 'mu':
                 Ox, Oy, Oz = atom['Observables']
 
-        rhox = (1./self.Hdim) * Ox
-        rhoy = (1./self.Hdim) * Oy
-        rhoz = (1./self.Hdim) * Oz
+                rho_mu = 0.5 * ( qeye(2) + qdot([0,0,1], [sigmax(), sigmay(), sigmaz()] ) )
+                partial_densities.append(rho_mu)
+            else:
+                rho_atom = qeye(2*atoms[i]['Spin']+1) # This is exp(-beta H) / Tr ( exp(-beta H ) ) when beta H << 1
+                partial_densities.append(rho_atom)
+
+        rhoz = tensor(partial_densities)
+        rhoz = rhoz.unit()
 
         dU = (-1j * self.H * one_over_plank2pi_neVs * dt).expm()
 
         r = np.zeros(steps, dtype=np.complex)
+        U = qeye(dU.dims) # this is t=0
         for i in range(steps):
-            U = dU ** i
-            r[i] += ( rhox * U.dag() * Ox * U ).tr()
-            r[i] += ( rhoy * U.dag() * Oy * U ).tr()
             r[i] += ( rhoz * U.dag() * Oz * U ).tr()
+            U *= dU
 
-        return np.real_if_close(r/3.)
-
-    def time_evolve_trotter(self, dt, steps, k=3.):
-        """
-        This subroutine does Trotter expnsion of the matrix
-        """
-        from time import time
-        atoms = self.atoms
-        for atom in atoms:
-            if atom['Label'] == 'mu':
-                Ox, Oy, Oz = atom['Observables']
-
-        rhox = (1./self.Hdim) * Ox
-        rhoy = (1./self.Hdim) * Oy
-        rhoz = (1./self.Hdim) * Oz
-
-        # compose U operator
-        dU = qeye(Oz.dims[0])
-        # this is broken!!!
-        for h in self.Hs:
-            dU *= (-1j * h * one_over_plank2pi_neVs * dt / k).expm()
-        dU = dU**k
-
-        r = np.zeros(steps, dtype=np.complex)
-        for i in range(steps):
-            U = dU**i
-            r[i] += ( rhox * U.dag() * Ox * U).tr()
-            r[i] += ( rhoy * U.dag() * Oy * U).tr()
-            r[i] += ( rhoz * U.dag() * Oz * U).tr()
-
-        return np.real_if_close(r/3.)
+        return np.real_if_close(r)
 
     def celio(self, tlist, k=4, direction=[0,0,1.]):
         """
@@ -459,6 +453,7 @@ class MuonNuclearInteraction(object):
             dims = self.create_hilbert_space(couple)
 
             H = self.dipolar_interaction(*couple)
+            self.logger.info("Adding interaction between {} and {} with distance {}".format( atoms[mu_idx]['Label'], atom['Label'], np.linalg.norm( atoms[mu_idx]['Position'] - atoms[l]['Position'] ) ) )
 
             if (couple[1]['Spin'] > 0.5 and 'EFGTensor' in couple[1].keys()):
                 Q, info = self.quadrupolar_interaction(couple[1])
