@@ -25,12 +25,19 @@ planck2pi_neVs = 6.582117e-7 #planck2pi [neV*s]
 one_over_plank2pi_neVs = 1. / planck2pi_neVs
 
 def rand_rotation_matrix(deflection=1.0, randnums=None):
-    """
-    Creates a random rotation matrix.
+    """Creates a random rotation matrix.
 
-    deflection: the magnitude of the rotation. For 0, no rotation; for 1, completely random
-    rotation. Small deflection => small perturbation.
-    randnums: 3 random numbers in the range [0, 1]. If `None`, they will be auto-generated.
+    Parameters
+    ----------
+    deflection :
+        the magnitude of the rotation. For 0, no rotation; for 1, completely random rotation. Small deflection => small perturbation. (Default value = 1.0)
+    randnums :
+        3 random numbers in the range [0, 1]. If `None`, they will be auto-generated. (Default value = None)
+
+    Returns
+    -------
+    numpy.array
+        Random matrix
     """
     # from http://www.realtimerendering.com/resources/GraphicsGems/gemsiii/rand_rotation.c
 
@@ -68,6 +75,7 @@ def rand_rotation_matrix(deflection=1.0, randnums=None):
 
 
 class MuonNuclearInteraction(object):
+    """The main UNDI class"""
 
     # Collection of gammas, never really used apart from muon's one.
     gammas = {'mu': 2*np.pi*135.5e6,
@@ -78,16 +86,36 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def splitIsotope(s):
-        """
-        This function separates the isotope number and the element name.
+        """This function separates the isotope number and the element name.
+
+        Parameters
+        ----------
+        s : str
+            input string, e.g. "63Cu" becomes ('63', 'Cu')
+
+        Returns
+        -------
+        tuple
+            (isotope number, element name)
         """
         return (''.join(filter(str.isdigit, s)) or None,
                 ''.join(filter(str.isalpha, s)) or None)
 
     @staticmethod
     def dipolar_interaction(a_i, a_j):
-        """
-        Dipolar interaction between atom a_i and atom a_j.
+        """Dipolar interaction between atom a_i and atom a_j.
+
+        Parameters
+        ----------
+        a_i :
+            first atom interacting with ...
+        a_j :
+            second atom.
+
+        Returns
+        -------
+        qutip.QObj
+            The dipolar contribution to the Hamiltoninan for the given couple of atoms.
         """
         gamma_i, p_i, s_i = a_i['Gamma'], a_i['Position'], a_i['Spin']
         gamma_j, p_j, s_j = a_j['Gamma'], a_j['Position'], a_j['Spin']
@@ -107,9 +135,18 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def quadrupolar_interaction(a_i):
-        """
-        Quadrupolar interaction for atom a_i in the electric field gradient
+        """Quadrupolar interaction for atom a_i in the electric field gradient
         described by 'EFGTensor'.
+
+        Parameters
+        ----------
+        a_i :
+            Atom considered
+
+        Returns
+        -------
+        qutip.QObj
+            The Quadrupolar contribution to the Hamiltoninan for the given atom.
         """
         l = a_i['Spin']
 
@@ -143,8 +180,19 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def muon_induced_efg(a_i, mu):
-        """
-        Operator for EFG directed along muon-atom direction.
+        """Operator for EFG directed along muon-atom direction.
+
+        Parameters
+        ----------
+        a_i :
+            Atoms affected by electric field gradient
+        mu :
+            muon, only used to calculate distance.
+
+        Returns
+        -------
+        qutip.QObj
+            The Quadrupolar contribution to the Hamiltoninan for the given atom.
         """
         l = a_i['Spin']
 
@@ -164,6 +212,19 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def custom_term(a_i):
+        """Adds a custom Hamiltonian term according to the expression given in
+        a_i['CustomHamiltonianTerm']
+
+        Parameters
+        ----------
+        a_i :
+            atom subject to CustomHamiltonianTerm
+
+        Returns
+        -------
+        qutip.QObj
+            The Custom contribution to the Hamiltoninan for the given atom.
+        """
         I = a_i['Operators']
         Ix, Iy, Iz = I
         p = a_i['Position']
@@ -173,13 +234,36 @@ class MuonNuclearInteraction(object):
 
     @staticmethod
     def external_field(atom, H):
-        """
-        Lorentz term for atom in the magnetic field H
+        """Lorentz term for atom in the external magnetic field H
+
+        Parameters
+        ----------
+        atom :
+            the atoms experiencing the external field
+        H :
+            the external field.
+
+        Returns
+        -------
+        qutip.QObj
+            The Lorents contribution to the Hamiltoninan for the given atom.
         """
         return - planck2pi_neVs * atom['Gamma'] * qdot(atom['Operators'], H)
 
     @staticmethod
     def create_hilbert_space(atoms):
+        """Generates various operators in the Hilbert space defined by atoms.
+
+        Parameters
+        ----------
+        atoms :
+            dictionary with atoms information.
+
+        Returns
+        -------
+        list
+            Hilbert space dimensions of the subspaces.
+        """
         n_nuclei = len(atoms)
 
         for i in range(n_nuclei):
@@ -281,9 +365,33 @@ class MuonNuclearInteraction(object):
         self.atoms = atoms
 
     def set_extfield(self, external_field):
+        """Sets an external field
+
+        Parameters
+        ----------
+        external_field : numpy.array
+            A 3D vector with the external field in T.
+
+        Returns
+        -------
+        None
+        """
         self._ext_field = np.array(external_field)
 
     def translate_rotate_sample_vec(self, bring_this_to_z):
+        """This function translates all positions in order to put the muon at
+        the origin of the Cartesian axis system and rotates the atomic position
+        in order to align the vector given in `bring_this_to_z` to the z Cartesian axis.
+
+        Parameters
+        ----------
+        bring_this_to_z :
+            3d vector.
+
+        Returns
+        -------
+        None
+        """
         natoms = len(self.atoms)
 
         # Bring muon to origin
@@ -294,12 +402,20 @@ class MuonNuclearInteraction(object):
             self.atoms[i]['Position'] = self.atoms[i]['Position'] - mup
 
         def rotation_matrix_from_vectors(vec1, vec2):
-            """ Find the rotation matrix that aligns vec1 to vec2
-            :param vec1: A 3d "source" vector
-            :param vec2: A 3d "destination" vector
-            :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
-
+            """Find the rotation matrix that aligns vec1 to vec2
             https://stackoverflow.com/a/59204638
+
+            Parameters
+            ----------
+            vec1 :
+                A 3d "source" vector
+            vec2 :
+                A 3d "destination" vector
+
+            Returns
+            -------
+            numpy.array
+                A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
             """
             a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
             v = np.cross(a, b)
@@ -321,8 +437,16 @@ class MuonNuclearInteraction(object):
                 self.atoms[i]['EFGTensor'] = np.dot(rmat, np.dot(self.atoms[i]['EFGTensor'], irmat))
 
     def create_H(self, cutoff = 10.0E-10):
-        """
-        cutoff is in Angstrom
+        """Generates the Hamiltonian
+
+        Parameters
+        ----------
+        cutoff : float, optional
+            maximum distance between atoms to be considered (Default value = 10.0E-10)
+
+        Returns
+        -------
+        None
         """
 
         atoms = self.atoms
@@ -388,9 +512,20 @@ class MuonNuclearInteraction(object):
         self.H = H
 
     def time_evolve_qutip(self, dt, steps):
-        """
-        Clear and simple translation into python of textbook description.
+        """Clear and simple translation into python of textbook description.
         Never actually used.
+
+        Parameters
+        ----------
+        dt : float
+            time step
+        steps : int
+            total number of steps
+
+        Returns
+        -------
+        numpy.array
+            Muon polarization function.
         """
 
         atoms = self.atoms
@@ -419,8 +554,21 @@ class MuonNuclearInteraction(object):
         return np.real_if_close(r)
 
     def celio(self, tlist, k=4, direction=[0,0,1.]):
-        """
-        This implements Celio's approximation as in Phys. Rev. Lett. 56 2720
+        """This implements Celio's approximation as in Phys. Rev. Lett. 56 2720 (1986)
+
+        Parameters
+        ----------
+        tlist : list or numpy.array
+            list of times
+        k : int
+            factor for Trotter approximation (Default value = 4)
+        direction : list
+            unused! Don't touch it. The code will complain if you touch it (Default value = [0, 0, 1])
+
+        Returns
+        -------
+        numpy.array
+            Muon polarization function along z.
         """
 
         def swap(l, p1, p2):
@@ -478,6 +626,20 @@ class MuonNuclearInteraction(object):
 
 
         def computeU(tt, k):
+            """ Computes time evolution operators
+
+            Parameters
+            ----------
+            tt :
+                time step
+            k :
+                factor used in Trotter expansion
+
+            Returns
+            -------
+            list
+                Hamiltonians acting on the various subspaces.
+            """
             # Computer time evolution operator.
             #  we will put the muon as the first particle
             Us = []
@@ -543,8 +705,16 @@ class MuonNuclearInteraction(object):
 
 
     def compute(self, cutoff = 10.0E-10):
-        """
-        This generates the Hamiltonian and finds eigenstates
+        """This generates the Hamiltonian and finds eigenstates
+
+        Parameters
+        ----------
+        cutoff : float
+            maximum distance between interacting atoms (Default value = 10.0E-10)
+
+        Returns
+        -------
+        None
         """
         # generate Hamiltonian
         self.create_H(cutoff)
@@ -554,8 +724,16 @@ class MuonNuclearInteraction(object):
 
 
     def load_eigenpairs(self, eigenpairs_file):
-        """
-        This is a helper function to solve or load previous results.
+        """This is a helper function to solve or load previous results.
+
+        Parameters
+        ----------
+        eigenpairs_file : str
+            file where eigenpairs have been stored
+
+        Returns
+        -------
+        None
         """
 
         if load_eigenpairs == False:
@@ -570,15 +748,33 @@ class MuonNuclearInteraction(object):
         self.ekets = data['ekets']
 
     def store_eigenpairs(self, eigenpairs_file):
-        """
-        This is a helper function to solve or load previous results.
+        """This is a helper function to solve or load previous results.
+
+        Parameters
+        ----------
+        eigenpairs_file : str
+            file where to store eigenpairs
+
+        Returns
+        -------
+        None
         """
         np.savez(save_eigenpairs, evals = self.evals, ekets = self.ekets)
 
 
-    def sample_spherical(self, direction=[0,0,1]):
-        """
-        This computes the elements to be later traced. Simple and slow implementation.
+    def matrix_elements(self, direction=[0,0,1]):
+        """This computes the elements <v|O|v> where O is the observation
+        direction. Simple but slow implementation.
+
+        Parameters
+        ----------
+        direction : list
+            not used, don't touch it. The code will complain if you do. (Default value = [0, 0, 1])
+
+        Returns
+        -------
+        numpy.array
+            Square of matrix elements
         """
 
         atoms = self.atoms
@@ -602,9 +798,18 @@ class MuonNuclearInteraction(object):
 
         return AA
 
-    def fast_sample_spherical(self, direction=[0,0,1]):
-        """
-        Same as above, but with numpy vectorized operations.
+    def fast_matrix_elements(self, direction=[0,0,1]):
+        """Same as above, but with numpy vectorized operations.
+
+        Parameters
+        ----------
+        direction : list
+            Not used. Don't touch it. The code will complain if you do (Default value = [0, 0, 1]).
+
+        Returns
+        -------
+        numpy.array
+            Square of matrix elements
         """
 
         atoms = self.atoms
@@ -632,19 +837,46 @@ class MuonNuclearInteraction(object):
         # This is what is done above...
         #for idx in range(len(ekets)):
         #    for jdx in range(len(ekets)):
-        #        AA[idx,jdx,0]=np.abs(Ox.matrix_element(ekets[idx],ekets[jdx]))**2
-        #        AA[idx,jdx,1]=np.abs(Oy.matrix_element(ekets[idx],ekets[jdx]))**2
-        #        AA[idx,jdx,2]=np.abs(Oz.matrix_element(ekets[idx],ekets[jdx]))**2
-        #
+        #        AA[idx,jdx]=np.abs(Ox.matrix_element(ekets[idx],ekets[jdx]))**2
 
         return w
 
 
     def polarization(self, tlist, cutoff = 10.0E-10, approximated=False):
+        """This function computes the depolarization function for a muon with
+        spin initially polarized along z and observed along the same direction.
+
+        cutoff: can be used to limit the maximum distance considered for dipolar
+        interactions. Units: Angstrom. Default: 10 Ang.
+
+        approximated: skips evaluation of contributions that slowly depend
+        on time (assumed as flat) and contributions that are nearly zero.
+        Can slightly accelerate the computation.
+
+        Parameters
+        ----------
+        tlist : list or numpy.array
+            List of times used to compute muon polarization function.
+
+        cutoff : float
+            Maximum distance between interacting atoms.
+            (Default value = 10.0E-10)
+
+        approximated : bool
+            Wether to avoid computing the contribution from matrix elements
+            close to 0 and consider low frequency signals as flat.
+            (Default value = False)
+
+
+        Returns
+        -------
+        numpy.array
+            Muon polarization function along z.
+        """
 
         self.compute(cutoff=cutoff)
 
-        w=self.fast_sample_spherical()
+        w=self.fast_matrix_elements()
 
         if approximated:
             return self._generate_approximated_signal(tlist, w)
@@ -652,6 +884,23 @@ class MuonNuclearInteraction(object):
             return self._generate_signal(tlist, w)
 
     def _generate_signal(self, tlist, w):
+        """ This function evaluates the time evolution operator at the
+        times provided in tlist
+
+
+        Parameters
+        ----------
+        tlist : numpy.array
+            List of times at which the muon polarization is observed.
+
+        w : numpy.array
+            Matrix elements of the operator defining the direction of observation.
+
+        Returns
+        -------
+        numpy.array
+            Muon polarization function along z.
+        """
         signal = np.zeros_like(tlist, dtype=np.complex)
 
         evals = self.evals
@@ -668,6 +917,26 @@ class MuonNuclearInteraction(object):
         return ( np.real_if_close(signal / self.Hdim ) )
 
     def _generate_approximated_signal(self, tlist, w, weps=1e-18, feps=1e-14):
+        """Same as above, but slightly faster.
+
+        Parameters
+        ----------
+        tlist : numpy.array
+            List of times at which the muon polarization is observed.
+
+        w : numpy.array
+            Matrix elements of the operator defining the direction of observation.
+
+        weps : float
+            Matrix elements smaller than weps are not summed (Default value = 1e-18)
+        feps :
+            Contributions with frequencies smaller that feps are considered flat (Default value = 1e-14)
+
+        Returns
+        -------
+        numpy.array
+            Muon polarization function along z.
+        """
 
         evals = self.evals
 
@@ -708,7 +977,7 @@ class MuonNuclearInteraction(object):
 
 if __name__ == '__main__':
     """
-    Here we always use SI in input.
+    Minimal example showing how to obtain FmuF polarization function.
     """
     import matplotlib.pyplot as plt
     angtom=1.0e-10 # m
