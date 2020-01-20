@@ -1,3 +1,10 @@
+"""
+# F-mu-F
+
+The well known F-mu-F signal identified by J.H.Brewer et al. in PRB 33 11 (1986):
+
+$G(t)=\frac{1}{6}\left[3+\cos(\sqrt{3} \omega_\text{D} t)+\left(1-\frac{1}{\sqrt{3}}\right)\cos(\frac{3-\sqrt{3}}{2}\omega_\text{D} t)+\left(1+\frac{1}{\sqrt{3}}\right)\cos(\frac{3+\sqrt{3}}{2}\omega_\text{D} t)\right]$
+"""
 # Importing stuff...
 try:
     from undi import MuonNuclearInteraction
@@ -8,11 +15,10 @@ except (ImportError, ModuleNotFoundError):
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 """
-# F-mu-F
+Let us consider a linear F-Mu-F molecule of total length $2r$ aligned along $z$.
 
-Here we always use SI in input.
+Remember that UNDI uses SI units.
 """
 
 angtom=1.0e-10 # m
@@ -23,16 +29,14 @@ mu_0=(4e-7)*np.pi # Tm A-1
 # This is a linear F-mu-F along z
 r=1.17 * angtom
 atoms = [
-            {'Position': np.array([0.000000  ,  0.  ,  0]),
-            'Label': 'F',
-            },
+            {'Position': np.array([0., 0., 0.]),
+            'Label': 'F'},
             
-            {'Position': np.array([0.000000  ,  0.  ,  r ]),
+            {'Position': np.array([0., 0., r ]),
             'Label': 'mu'},
             
-            {'Position': np.array([0.000000  ,  0.  ,  2*r]),
-            'Label': 'F',
-            }
+            {'Position': np.array([0., 0., 2*r]),
+            'Label': 'F'}
         ]
 # Time values, in seconds
 tlist = np.linspace(0, 10e-6, 100)
