@@ -16,12 +16,13 @@ Before you start
 
 Before you start playing with UNDI through examples, a few important information:
 
-* UNDI uses SI units, which soetimes might be strange 
-  (you end up adding many 1e-10) but does not hurt too much.
+* UNDI uses SI units, which might seem an unfortunate choice
+  (you end up writing tiny numbers) but does not hurt too much.
 
-* UNDI assumes that the spin polarization is along :math:`z` and that observation is done
-  along the same direction. You must rotate the same according to match this
-  condition with your experimental setting.
+* UNDI assumes that the spin polarization is along :math:`z` and
+  that observation is done along the same direction.
+  You must rotate the sample definition accordingly (there is
+  a function to do that).
 
 * As a consequence, an external field applied along :math:`z` is a Longitudinal Field (LF)
   while external fields in the plane perpendicular to :math:`z` are Transverse Fields (TF).
@@ -30,7 +31,7 @@ Before you start playing with UNDI through examples, a few important information
 Using UNDI
 ----------
 
-The documentation, for the time being, is provided as a set of examples
+The documentation, for the time being, is provided by a set of examples
 that reproduce results published in literature.
 
 
@@ -39,11 +40,3 @@ that reproduce results published in literature.
    :caption: Contents:
 
    examples/examples
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
