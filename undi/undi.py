@@ -266,17 +266,23 @@ class MuonNuclearInteraction(object):
         """
         n_nuclei = len(atoms)
 
+        # check spins
+        for a in atoms:
+            v = 2*a['Spin']+1
+            if not v.is_integer():
+                raise RuntimeError('Spin of atom number {} is strange!'.format(i))
+
         for i in range(n_nuclei):
-            Lx = tensor(* [spin_Jx(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-            Ly = tensor(* [spin_Jy(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-            Lz = tensor(* [spin_Jz(a_j['Spin']) if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
+            Lx = tensor(* [spin_Jx(a_j['Spin']) if j == i else qeye(int(2*a_j['Spin']+1)) for j,a_j in enumerate(atoms)] )
+            Ly = tensor(* [spin_Jy(a_j['Spin']) if j == i else qeye(int(2*a_j['Spin']+1)) for j,a_j in enumerate(atoms)] )
+            Lz = tensor(* [spin_Jz(a_j['Spin']) if j == i else qeye(int(2*a_j['Spin']+1)) for j,a_j in enumerate(atoms)] )
             atoms[i]['Operators'] = (Lx, Ly, Lz)
 
             # add also observables in the case of muon
             if atoms[i]['Label'] == 'mu':
-                Ox = tensor(* [sigmax() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-                Oy = tensor(* [sigmay() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
-                Oz = tensor(* [sigmaz() if j == i else qeye(2*a_j['Spin']+1) for j,a_j in enumerate(atoms)] )
+                Ox = tensor(* [sigmax() if j == i else qeye(int(2*a_j['Spin']+1)) for j,a_j in enumerate(atoms)] )
+                Oy = tensor(* [sigmay() if j == i else qeye(int(2*a_j['Spin']+1)) for j,a_j in enumerate(atoms)] )
+                Oz = tensor(* [sigmaz() if j == i else qeye(int(2*a_j['Spin']+1)) for j,a_j in enumerate(atoms)] )
                 atoms[i]['Observables'] = (Ox, Oy, Oz)
 
         return Oz.dims
