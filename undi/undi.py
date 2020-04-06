@@ -171,7 +171,7 @@ class MuonNuclearInteraction(object):
         omega_q = E_q * one_over_plank2pi_neVs
 
         # Quadrupole
-        cost = J_to_neV * (elementary_charge * Q /(4*l *(2*l -1)))
+        cost = J_to_neV * (elementary_charge * Q /(2*l * (2*l -1)))
         return( \
                 cost * (qdot(I, qMdotV(EFG,I))) , \
                 (omega_q, eta) \
@@ -675,23 +675,31 @@ class MuonNuclearInteraction(object):
         # observe along direction
         direction /= np.linalg.norm(direction)
         if not np.allclose(direction,[0,0,1]):
-            raise RuntimeError("Polarization different from z not yet implemented (but it's easy to implement)")
-        o = sigmaz() # this would read qdot((sigmax(), sigmay(), sigmaz()), direction )
+            self.logger.log(logging.WARNING, "Polarization different from z not yet fully implemented (but it's easy to implement)")
+            o = qdot((sigmax(), sigmay(), sigmaz()), direction )
+        else:
+            o = sigmaz()
+
 
         # Muon observables in big space
         O = tensor(o, *[qeye(S) for S in SubspacesInfo['NucHdim']])
 
         # Insert muon polarized along positive quantization direction
-        #   e, v  = o.eigenstates()
-        #   mu_psi = v[1] if e[1] == 1.0 else v[0]
-        #
-        # Actually below we set it as in basis(2,0), i.e. along z, such that
-        # all elements in HdimHalf:2*HdimHalf are zero!
+        if not np.allclose(direction,[0,0,1]):
+            e, v  = (o+qeye(2)).eigenstates()
+            mu_psi = v[1] if e[1] > 0.1 else v[0]
+        else:
+            mu_psi = basis(2,0)
 
+        # Dimension of the nucler subspace
         HdimHalf = np.prod(SubspacesInfo['NucHdim'])
-        psi0 = np.zeros(2*HdimHalf, dtype=np.complex)
-        psi0[:HdimHalf] = np.exp(2.j * np.pi * np.random.rand(HdimHalf))
-        psi = Qobj( psi0, dims=O.dims, type='ket' )
+
+        # Initial (random) state for all nuclei
+        psi0 = np.exp(2.j * np.pi * np.random.rand(HdimHalf))
+
+        # Full initial state, muon and nuclei
+        dims=[SubspacesInfo['NucHdim'], [1,]*len(SubspacesInfo['NucHdim'])]
+        psi = tensor(mu_psi, Qobj( psi0, dims=dims, type='ket' ))
 
         # Normalize
         Normalization = 1./np.sqrt(HdimHalf)
