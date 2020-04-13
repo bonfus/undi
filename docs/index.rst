@@ -6,7 +6,7 @@
 Welcome to UNDI's documentation!
 ================================
 
-mUon Nucleai Dipolar Interaction is a small package to obtain muon
+mUon Nuclear Dipolar Interaction is a small package to obtain muon
 depolarization originating from nuclear dipoles in standard experimental
 conditions (i.e. when the nuclear density matrix can be assumed to be the
 identity matrix).
@@ -22,10 +22,12 @@ Before you start playing with UNDI through examples, a few important information
 * UNDI assumes that the spin polarization is along :math:`z` and
   that observation is done along the same direction.
   You must rotate the sample definition accordingly (there is
-  a function to do that).
+  a function to do that). Initial polarization along arbitraty
+  directions is presently implemented only in Celio's method.
 
-* As a consequence, an external field applied along :math:`z` is a Longitudinal Field (LF)
-  while external fields in the plane perpendicular to :math:`z` are Transverse Fields (TF).
+* As a consequence, in genrale, an external field applied along :math:`z`
+  is a Longitudinal Field (LF) while external fields in the plane 
+  perpendicular to :math:`z` are Transverse Fields (TF).
 
 
 Using UNDI

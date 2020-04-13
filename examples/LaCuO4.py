@@ -1,4 +1,10 @@
-from undi import MuonNuclearInteraction
+# Importing stuff...
+try:
+    from undi import MuonNuclearInteraction
+except (ImportError, ModuleNotFoundError):
+    import sys
+    sys.path.append('../undi')
+    from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -7,33 +13,35 @@ import numpy as np
 #| # LaCuO4
 #| 
 #| This notebook tries to reproduce the results in the papers https://arxiv.org/pdf/1201.5406.pdf or https://doi.org/10.1016/j.phpro.2012.04.056
+#| Some additional information can be found here:
+#| 
+#|  * https://journals.aps.org/prb/abstract/10.1103/PhysRevB.49.9879
+#|  * https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.72.760
+#|  * https://doi.org/10.1103/PhysRevB.64.134525
 #| 
 #| ![](images/Fig1.png)
 #| ![](images/Fig5a.png)
 #| ![](images/Fig6.png)
 
 
+# Input data and constants
 
 angtom=1.0e-10 # m
 
-
 Quadrupole_moment = {
 'Cu' :  -0.211e-28 ,  # m^2 
-'La' : 0.22e-28    # m^2
+'La' : 0.22e-28       # m^2
 }
 
 Omega = {
-'Cu': 2*np.pi*34.0e6,          #  213.6e6 or 194.8e6 # Hz (quadrupolar coupling constant)
-'La': 2*np.pi*6.4e6           #   40.2e6                 (quadrupolar coupling constant)
+'Cu': 2*np.pi*34.0e6,          #  213.6e6 or 194.8e6 # Hz
+'La': 2*np.pi*6.4e6            #  40.2e6
 }
-
 
 eta={
 'Cu':0.0, #0.02                          # eta, extract form paper
 'La':0.0 # 0.03
 }
-
-
 
 
 #| From "Nuclear Quadrupole Resonance Spectroscopy" by Hand and Das, Solid State Physics Supplement 1, the NQR transition frequency $\omega$ for a spin $S$ with electric field gradient principal component $V_{zz}$ and quadrupole moment $Q$ is
@@ -87,7 +95,7 @@ def gen_radial_EFG(p_mu, p_N, Vzz=None):
         Vzz = Vzz_for_unit_charge_at_distance(n)
 
     x /= n; r = 1. # keeping formula below for clarity
-    return -Vzz * ( (3.*np.outer(x,x)-np.eye(3)*(r**2))/r**5 )
+    return -Vzz * ( (3.*np.outer(x,x)-np.eye(3)*(r**2))/r**5 ) * 0.5
 
 
 def gen_neighbouring_atomic_structure(muon_position, cutoffs):
@@ -96,11 +104,9 @@ def gen_neighbouring_atomic_structure(muon_position, cutoffs):
     from ase.neighborlist import neighbor_list
     
     
-    atoms = read('1008481.cif')
+    atoms = read('./structures/1008481.cif')
     atoms.extend(Atom('H', [0,0,0]))
-    
-    cell_matrix = atoms.cell.array
-    
+        
     # update muon position
     pos = atoms.get_scaled_positions()
     pos[-1] = muon_position
@@ -167,8 +173,6 @@ def gen_signal(atoms, pol_direction, k=2, nrep=1):
 
 
 
-
-
 #| ### Site D
 #| 
 #| Muon site $D$ (0.120, 0, 0.219)
@@ -195,7 +199,7 @@ axes.set_xlim([0,20])
 axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
 axes.set_ylabel(r'Asymmetry', fontsize=20);
 
-plt.legend()
+plt.legend(loc=2, fontsize=20)
 plt.savefig("D.png")
 plt.show()
 
@@ -224,7 +228,7 @@ axes.set_xlim([0,20])
 axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
 axes.set_ylabel(r'Asymmetry', fontsize=20);
 
-plt.legend()
+plt.legend(loc=2, fontsize=20)
 plt.savefig("M.png")
 plt.show()
 
@@ -261,7 +265,7 @@ axes.set_xlim([0,20])
 axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
 axes.set_ylabel(r'Asymmetry', fontsize=20);
 
-plt.legend()
+plt.legend(loc=2, fontsize=20)
 plt.savefig("T1_and_T2.png")
 plt.show()
 
@@ -288,7 +292,7 @@ axes.set_xlim([0,20])
 axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
 axes.set_ylabel(r'Asymmetry', fontsize=20);
 
-plt.legend()
+plt.legend(loc=2, fontsize=20)
 plt.savefig("Ba.png")
 plt.show()
 
@@ -316,7 +320,7 @@ axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
 axes.set_ylabel(r'Asymmetry', fontsize=20);
 
 
-plt.legend()
+plt.legend(loc=2, fontsize=20)
 plt.savefig("U1.png")
 plt.show()
 
@@ -335,7 +339,7 @@ print('done!')
 fig, axes = plt.subplots(1,1, figsize=(12,12))
 
 axes.plot(tlist*1e6,signal_H_Pab,'--', color='darkgreen', marker='o',label='H Calc. ', zorder=1)
-axes.plot(tlist*1e6,signal_H_Pc, '--', color='darkgreen', marker='o',label='H Calc. P//c', zorder=2)
+axes.plot(tlist*1e6,signal_H_Pc, '--', color='lightgreen', marker='o',label='H Calc. P//c', zorder=2)
 
 imdata = plt.imread('images/Fig1.png')
 axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.3, 1.05], aspect=20/(1.05+0.3), resample=True)
@@ -346,7 +350,7 @@ axes.set_xlim([0,20])
 axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
 axes.set_ylabel(r'Asymmetry', fontsize=20);
 
-plt.legend()
+plt.legend(loc=2, fontsize=20)
 plt.savefig("H.png")
 plt.show()
 
