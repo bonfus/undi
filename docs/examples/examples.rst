@@ -7,5 +7,4 @@ Examples
 
    Cu
    FmuF
-
-
+   LaCuO4
