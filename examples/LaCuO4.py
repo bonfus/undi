@@ -59,18 +59,23 @@ import numpy as np
 angtom=1.0e-10 # m
 
 Quadrupole_moment = {
-'Cu' : -0.211e-28 ,  # m^2 
-'La' :  0.22e-28     # m^2
+    'Cu' : -( 0.7 * 0.22   +   0.3 * 0.204 ) * 1e-28 ,  # m^2 , average between 63Cu and 65Cu
+    'La' :  0.20e-28     # m^2
+}
+
+Gamma = {
+    'Cu': ( 0.7 * 71.118   +   0.3 * 76.044 ) * 1e6, # Average between 63Cu and 65Cu
+    'La': 38.083                              * 1e6  # La
 }
 
 Omega = {
-'Cu': 2*np.pi*34.0e6,          #  213.6e6 or 194.8e6 # Hz
-'La': 2*np.pi*6.4e6            #  40.2e6
+    'Cu': 2*np.pi*34.0e6,          #  213.6e6 or 194.8e6 # Hz
+    'La': 2*np.pi*6.4e6            #  40.2e6
 }
 
 eta={
-'Cu':0.0, # 0.02               # eta is set to zero even if it's value
-'La':0.0  # 0.03               # is reported to be sligthly different.
+    'Cu': 0.02,              # eta is set to zero even if it's value
+    'La': 0.03               # is reported to be sligthly different.
 }
 
 
@@ -128,14 +133,21 @@ def gen_radial_EFG(p_mu, p_N, Vzz=None):
     x /= n; r = 1. # keeping formula below for clarity
     return -Vzz * ( (3.*np.outer(x,x)-np.eye(3)*(r**2))/r**5 ) * 0.5
 
+def get_omegaQ_mu(I,Q,d):
+    epsilon0 = 8.8541878E-12 # ampere^2 ⋅ kilogram^−1 ⋅ meter^−3 ⋅ second^4
+    elementary_charge=1.6021766E-19 # Coulomb = ampere ⋅ second
+    h=6.6260693e-34 # Js
+    hbar=h/(2*np.pi) # Js
+    
+    return - (1/hbar) * (1./(4 * np.pi * epsilon0)) * (3 * elementary_charge**2 * Q) / (2*I*(2*I-1)*d**3)
 
 #| ### Calculate Signal
 #|
 #| The function below creates the input data for the UNDI code starting
 #| from the structured deposited at COD with ID: 1008481.
 #|
-#| Just after that, I added a simple wrapper for the Celio method implemented
-#| UNDI.
+#| In the final part of this cell I added a simple wrapper 
+#| that repeats a Celio estimate.
 
 def gen_neighbouring_atomic_structure(muon_position, cutoffs):
     from ase.io import read
@@ -176,18 +188,19 @@ def gen_neighbouring_atomic_structure(muon_position, cutoffs):
             EFG_tensor = EFG_from_omegaq_PAS(Omega[symb], eta[symb], 1./2., spin, Quadrupole_moment[symb])
 
             # Muon part of EFG (the muon is always at 0)
-            # EFG_tensor += gen_radial_EFG(muon_pos, pos)     # What to put here?
+            #EFG_tensor += gen_radial_EFG(muon_pos, pos)
+            
             
             data.append({'Position': pos,
                          'Label': symb,
+                         'Gamma': Gamma[symb],
                          'ElectricQuadrupoleMoment': Quadrupole_moment[symb],
                          'EFGTensor': EFG_tensor,
-                         }
-                        )
+                         'OmegaQmu': get_omegaQ_mu(spin, Quadrupole_moment[symb], np.linalg.norm(pos))
+                         })
     data.insert(0, 
                     {'Position': muon_pos,
                      'Label': 'mu'},
-
                 )
     return data
 
@@ -237,8 +250,8 @@ signal_D_Pa = gen_signal(atoms, np.array([1.,0.,0.]))
 signal_D_Pc = gen_signal(atoms, np.array([0.,0.,1.]))
 
 fig, axes = plt.subplots(1,1, figsize=(12,12))
-axes.plot(tlist*1e6,signal_D_Pc,'b--',marker='o',label='P//c Calc. ', zorder=1)
-axes.plot(tlist*1e6,signal_D_Pa,'y--',marker='o',label='P _|_ c Calc. ', zorder=2)
+axes.scatter(tlist*1e6,signal_D_Pc, color='k', s=80, facecolors='none', marker='o', label='P//c Calc. ', zorder=1)
+axes.scatter(tlist*1e6,signal_D_Pa, color='r', s=80, facecolors='none', marker='o', label='P _|_ c Calc. ', zorder=2)
 
 imdata = plt.imread('images/Fig6.png')
 axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.3, 1.1], aspect=20/(1.1+0.3), resample=True)
@@ -261,23 +274,28 @@ plt.show()
 #| matches the values reported in 1. and 2.
 
 
-
 atoms = gen_neighbouring_atomic_structure([0.5,  0.,  0.096], cutoffs={'Cu':3.2, 'La':3.2})
 
 print("Computing signal...", end='', flush=True)
+signal_M_Pc = gen_signal(atoms, np.array([0.,0.,1.]), k=4, nrep=8)
+signal_M_Pa = gen_signal(atoms, np.array([1.,0.,0.]), k=4, nrep=8)
+signal_M_Pb = gen_signal(atoms, np.array([0.,1.,0.]), k=4, nrep=8)
 signal_M_Pab = gen_signal(atoms, np.array([1.,1.,0.]), k=4, nrep=8)
 print('done!')
 
 
-imdata = plt.imread('images/Fig5a.png')
+imdata = plt.imread('images/Site_M_Thesis.png')
 
 fig, axes = plt.subplots(1,1, figsize=(12,12))
 
-axes.plot(tlist*1e6,signal_M_Pab,'k--',marker='o',label='M Calc. ', zorder=1)
-axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.3, 1.1], aspect=20/(1.1+0.3), resample=True)
+axes.scatter(tlist*1e6,signal_M_Pc, color='k', s=80, facecolors='none', marker='o', label='M Calc. c', zorder=1)
+axes.scatter(tlist*1e6,signal_M_Pa, color='r', s=80, facecolors='none', marker='o', label='M Calc. a', zorder=2)
+axes.scatter(tlist*1e6,signal_M_Pb, color='r', s=80, facecolors='none', marker='o', label='M Calc. b', zorder=3)
+axes.scatter(tlist*1e6,signal_M_Pab,color='g', s=80, facecolors='none', marker='o', label='M Calc. ab', zorder=4)
+axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.1, 1.1], aspect=20/(1.1+0.1), resample=True)
 
 
-axes.set_ylim([-0.3,1.1])
+axes.set_ylim([-0.1,1.1])
 axes.set_xlim([0,20])
 axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
 axes.set_ylabel(r'Asymmetry', fontsize=20);
@@ -297,32 +315,52 @@ plt.show()
 atoms = gen_neighbouring_atomic_structure([0.2,  0.,  0.15], cutoffs={'Cu':4., 'La':3.}) 
 
 print("Computing signal...", end='', flush=True)
+signal_T1_Pa = gen_signal(atoms, np.array([1.,0.,0.]), nrep=2)
+signal_T1_Pb = gen_signal(atoms, np.array([0.,1.,0.]), nrep=2)
 signal_T1_Pab = gen_signal(atoms, np.array([1.,1.,0.]), nrep=2)
+signal_T1_Pc = gen_signal(atoms, np.array([0.,0.,1.]), nrep=2)
 print('done!')
 
 atoms = gen_neighbouring_atomic_structure([0.225,  0.,  0.225], cutoffs={'Cu':4.2, 'La':3.})
 
 print("Computing signal...", end='', flush=True)
+signal_T2_Pa = gen_signal(atoms, np.array([1.,0.,0.]), nrep=2)
+signal_T2_Pb = gen_signal(atoms, np.array([0.,1.,0.]), nrep=2)
 signal_T2_Pab = gen_signal(atoms, np.array([1.,1.,0.]), nrep=2)
+signal_T2_Pc = gen_signal(atoms, np.array([0.,0.,1.]), nrep=2)
+
 print('done!')
 
 
 
-fig, axes = plt.subplots(1,1, figsize=(12,12))
+fig, [ax1, ax2] = plt.subplots(1,2, figsize=(24,12))
 
-axes.plot(tlist*1e6,signal_T1_Pab,'r--',marker='o',label='T1 Calc. ', zorder=1)
-axes.plot(tlist*1e6,signal_T2_Pab,'g--',marker='o',label='T2_Calc. ', zorder=2)
+ax1.scatter(tlist*1e6,signal_T1_Pa, color='r', s=80, facecolors='none', marker='o',label='T1 Calc. a', zorder=1)
+ax1.scatter(tlist*1e6,signal_T1_Pb, color='r', s=80, facecolors='none', marker='o',label='T1 Calc. b', zorder=2)
+ax1.scatter(tlist*1e6,signal_T1_Pab, color='g', s=80, facecolors='none',  marker='o',label='T1 Calc. ab', zorder=3)
+ax1.scatter(tlist*1e6,signal_T1_Pc, color='k', s=80, facecolors='none', marker='o',label='T1 Calc. c', zorder=4)
 
-imdata = plt.imread('images/Fig1.png')
-axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.3, 1.05], aspect=20/(1.05+0.3), resample=True)
+imdata = plt.imread('images/Site_T1_Thesis.png')
+ax1.imshow(imdata, zorder=0, extent=[0., 20.0, -0.15, 1.1], aspect=20/(1.1+0.15), resample=True)
 
 
-axes.set_ylim([-0.3,1.05])
-axes.set_xlim([0,20])
-axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
-axes.set_ylabel(r'Asymmetry', fontsize=20);
+ax2.scatter(tlist*1e6,signal_T2_Pa, color='r', s=80, facecolors='none', marker='o',label='T2 Calc. a', zorder=1)
+ax2.scatter(tlist*1e6,signal_T2_Pb, color='r', s=80, facecolors='none', marker='o',label='T2 Calc. b', zorder=2)
+ax2.scatter(tlist*1e6,signal_T2_Pab, color='g', s=80, facecolors='none',  marker='o',label='T2 Calc. ab', zorder=3)
+ax2.scatter(tlist*1e6,signal_T2_Pc, color='k', s=80, facecolors='none', marker='o',label='T2 Calc. c', zorder=4)
 
-plt.legend(loc=2, fontsize=20)
+imdata = plt.imread('images/Site_T2_Thesis.png')
+ax2.imshow(imdata, zorder=0, extent=[0., 20.0, -0.15, 1.1], aspect=20/(1.1+0.15), resample=True)
+
+
+for ax in (ax1,ax2):
+    ax.set_ylim([-0.3,1.05])
+    ax.set_xlim([0,20])
+    ax.set_xlabel(r'$t (\mu s)$', fontsize=20)
+    ax.set_ylabel(r'Asymmetry', fontsize=20);
+
+    ax.legend(loc=2, fontsize=20)
+
 plt.savefig("T1_and_T2.png")
 plt.show()
 
@@ -343,19 +381,18 @@ plt.show()
 #|       l(La2-Ba) =  2.9965(10) Å     (second couple)
 #|       l(La1-Ba) =  3.465(6) Å
 
-atoms = gen_neighbouring_atomic_structure([0.1,  0.,  0.1], cutoffs={'Cu':2., 'La':3.5}) 
+atoms = gen_neighbouring_atomic_structure([0.1,  0.,  0.1], cutoffs={'Cu':2., 'La':3.5})
 
 print("Computing signal...", end='', flush=True)
-signal_Ba_Pab = gen_signal(atoms, np.array([1.,1.,0.]),k=1)
+signal_Ba_Pab = gen_signal(atoms, np.array([1.,0.,0.]),k=1)
 print('done!')
 
 imdata = plt.imread('images/Fig5a.png')
 
 fig, axes = plt.subplots(1,1, figsize=(12,12))
 
-axes.plot(tlist*1e6,signal_Ba_Pab,'m--',marker='o',label='Ba Calc. ', zorder=1)
+axes.scatter(tlist*1e6,signal_Ba_Pab, color='m', s=80, facecolors='none', marker='o', label='Ba Calc. ', zorder=1)
 axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.3, 1.1], aspect=20/(1.1+0.3), resample=True)
-
 
 axes.set_ylim([-0.3,1.1])
 axes.set_xlim([0,20])
@@ -388,15 +425,21 @@ plt.show()
 atoms = gen_neighbouring_atomic_structure([0.12,  0.,  0.11], cutoffs={'Cu':3.7, 'La':3.1})
 
 print("Computing signal...", end='', flush=True)
-signal_U1_Pab = gen_signal(atoms, np.array([1.,1.,0.]), nrep=4, k=4)
+signal_U1_Pa = gen_signal(atoms, np.array([1.,0.,0.]), nrep=2, k=4)
+signal_U1_Pb = gen_signal(atoms, np.array([0.,1.,0.]), nrep=2, k=4)
+signal_U1_Pc = gen_signal(atoms, np.array([0.,0.,1.]), nrep=2, k=4)
+signal_U1_Pab = gen_signal(atoms, np.array([1.,1.,0.]), nrep=2, k=4)
 print('done!')
 
-imdata = plt.imread('images/Fig5a.png')
+imdata = plt.imread('images/Site_U1_Thesis.png')
 
 fig, axes = plt.subplots(1,1, figsize=(12,12))
 
-axes.plot(tlist*1e6,signal_U1_Pab,'b--',marker='o',label='U1 Calc. ', zorder=1)
-axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.28, 1.1], aspect=20/(1.1+0.28), resample=True)
+axes.scatter(tlist*1e6,signal_U1_Pa, color='r', s=80, facecolors='none',marker='o',label='U1 Calc. a', zorder=1)
+axes.scatter(tlist*1e6,signal_U1_Pb, color='r', s=80, facecolors='none',marker='o',label='U1 Calc. b', zorder=2)
+axes.scatter(tlist*1e6,signal_U1_Pc, color='k', s=80, facecolors='none',marker='o',label='U1 Calc. c', zorder=3)
+axes.scatter(tlist*1e6,signal_U1_Pab,color='g', s=80, facecolors='none',marker='o',label='U1 Calc. ab', zorder=4)
+axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.3, 1.1], aspect=20/(1.1+0.3), resample=True)
 
 
 axes.set_ylim([-0.3,1.1])
@@ -407,99 +450,4 @@ axes.set_ylabel(r'Asymmetry', fontsize=20);
 
 plt.legend(loc=2, fontsize=20)
 plt.savefig("U1.png")
-plt.show()
-
-
-
-#| #### Site H
-#|
-#| Site H, in (0.253, 0.0, 0.152), is what worries me most.
-#| It is reported to have these neighbors
-#|
-#|      2Cu, La(1), La(2), La(2), La(2)
-#| 
-#| but I don't see how it can have 3 La2 neighbors (see picture).
-#| I'm considering 4 La(2) neighbors.
-#|
-#| ![H](images/Site_H.png)
-#|
-#| My results here do not mach at all, unless we consider the initial polarization
-#| to be along c.
-
-
-atoms = gen_neighbouring_atomic_structure([0.253,  0.,  0.152], cutoffs={'Cu':4., 'La':3.5}) 
-
-print("Computing signal...", end='', flush=True)
-signal_H_Pab = gen_signal(atoms, np.array([1.,1.,0.]), k=1)
-signal_H_Pa = gen_signal(atoms, np.array([1.,0.,0.]), k=1)
-signal_H_Pc = gen_signal(atoms, np.array([0.,0.,1.]), k=1)
-print('done!')
-
-fig, axes = plt.subplots(1,1, figsize=(12,12))
-
-axes.plot(tlist*1e6,signal_H_Pab,'--', color='darkgreen', marker='o',label='H Calc. P//ab', zorder=1)
-axes.plot(tlist*1e6,signal_H_Pa, '--', color='green', marker='o',label='H Calc. P//a', zorder=2)
-axes.plot(tlist*1e6,signal_H_Pc, '--', color='lightgreen', marker='o',label='H Calc. P//c', zorder=3)
-
-imdata = plt.imread('images/Fig1.png')
-axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.3, 1.05], aspect=20/(1.05+0.3), resample=True)
-
-
-axes.set_ylim([-0.3,1.05])
-axes.set_xlim([0,20])
-axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
-axes.set_ylabel(r'Asymmetry', fontsize=20);
-
-plt.legend(loc=2, fontsize=20)
-plt.savefig("H.png")
-plt.show()
-
-#|
-#| Same as above, but with another position taken from this list of
-#| equivalent positions:
-#|
-#|             0.253000   0.000000   0.152000
-#|             0.747000   0.000000   0.848000
-#|             0.747000   0.000000   0.152000
-#|             0.253000   0.000000   0.848000
-#|             0.000000   0.253000   0.152000
-#|             0.000000   0.747000   0.848000
-#|             0.000000   0.747000   0.152000
-#|             0.000000   0.253000   0.848000
-#|             0.753000   0.500000   0.652000
-#|             0.247000   0.500000   0.348000
-#|             0.247000   0.500000   0.652000
-#|             0.753000   0.500000   0.348000
-#|             0.500000   0.753000   0.652000
-#|             0.500000   0.247000   0.348000
-#|             0.500000   0.247000   0.652000
-#|             0.500000   0.753000   0.348000
-#|
-#| Nothing really changing though
-
-atoms = gen_neighbouring_atomic_structure([0.753000 ,  0.500000  , 0.652000], cutoffs={'Cu':4., 'La':3.5}) 
-
-print("Computing signal...", end='', flush=True)
-signal_H_Pab = gen_signal(atoms, np.array([1.,1.,0.]), k=1)
-signal_H_Pa = gen_signal(atoms, np.array([1.,0.,0.]), k=1)
-signal_H_Pc = gen_signal(atoms, np.array([0.,0.,1.]), k=1)
-print('done!')
-
-fig, axes = plt.subplots(1,1, figsize=(12,12))
-
-axes.plot(tlist*1e6,signal_H_Pab,'--', color='darkgreen', marker='o',label='H Calc. P//ab', zorder=1)
-axes.plot(tlist*1e6,signal_H_Pa, '--', color='green', marker='o',label='H Calc. P//a', zorder=2)
-axes.plot(tlist*1e6,signal_H_Pc, '--', color='lightgreen', marker='o',label='H Calc. P//c', zorder=3)
-
-imdata = plt.imread('images/Fig1.png')
-axes.imshow(imdata, zorder=0, extent=[0., 20.0, -0.3, 1.05], aspect=20/(1.05+0.3), resample=True)
-
-
-axes.set_ylim([-0.3,1.05])
-axes.set_xlim([0,20])
-axes.set_xlabel(r'$t (\mu s)$', fontsize=20)
-axes.set_ylabel(r'Asymmetry', fontsize=20);
-
-plt.legend(loc=2, fontsize=20)
-plt.savefig("H.png")
 plt.show()
