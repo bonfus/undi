@@ -309,6 +309,7 @@ class MuonNuclearInteraction(object):
             spin  = atom.get('Spin', None)
             label = atom.get('Label', None)
             pos   = atom.get('Position', None)
+            gamma = atom.get('Gamma', None)
 
             # validation
             if pos is None:
@@ -356,7 +357,11 @@ class MuonNuclearInteraction(object):
                 else:
                     atoms[i]['Spin'] = isotope.spin
 
-                atoms[i]['Gamma'] = isotope.g_factor * 7.622593285e6 * 2. * pi  #  \mu_N /h, is 7.622593285(47) MHz/T that in turn is equal to  γ_n / (2 π g_n)
+                # check if overriding gamma
+                if gamma:
+                    self.logger.warning("Warning, overriding gamma for {}".format(label))
+                else:
+                    atoms[i]['Gamma'] = isotope.g_factor * 7.622593285e6 * 2. * pi  #  \mu_N /h, is 7.622593285(47) MHz/T that in turn is equal to  γ_n / (2 π g_n)
 
             # increase Hilbert space dimension
             self.Hdim *= (2*atoms[i]['Spin']+1)
@@ -431,10 +436,14 @@ class MuonNuclearInteraction(object):
             rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
             return rotation_matrix
 
+        bring_this_to_z = np.array(bring_this_to_z)
+        bring_this_to_z /= np.linalg.norm(bring_this_to_z)
+
         if not np.allclose(bring_this_to_z, np.array([0,0,1.])):
             rmat = rotation_matrix_from_vectors(bring_this_to_z, np.array([0,0,1.]))
         else:
             rmat = np.eye(3)
+
         irmat = np.linalg.inv(rmat)
 
         for i in range(natoms):
@@ -1119,7 +1128,7 @@ if __name__ == '__main__':
         tomegad=interval*omegad
         y = (1./6.)*(3+cos(sqrt(3)*tomegad)+ \
                     (1-1/sqrt(3))*cos(((3-sqrt(3))/2)*tomegad)+ \
-                    (1+1/sqrt(3))*cos(((3+sqrt(3))/2)*tomegad))#+0.05*(exp(-x/2.5))**1.5
+                    (1+1/sqrt(3))*cos(((3+sqrt(3))/2)*tomegad))
         return y
 
     axes.plot(tlist, plot_brewer(tlist, r), label='F-mu-F Brewer', linestyle=':')
