@@ -436,7 +436,7 @@ class MuonNuclearInteraction(object):
             rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
             return rotation_matrix
 
-        bring_this_to_z = np.array(bring_this_to_z)
+        bring_this_to_z = np.array(bring_this_to_z, dtype=np.float)
         bring_this_to_z /= np.linalg.norm(bring_this_to_z)
 
         if not np.allclose(bring_this_to_z, np.array([0,0,1.])):
