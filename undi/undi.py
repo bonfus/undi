@@ -439,10 +439,12 @@ class MuonNuclearInteraction(object):
         bring_this_to_z = np.array(bring_this_to_z, dtype=np.float)
         bring_this_to_z /= np.linalg.norm(bring_this_to_z)
 
-        if not np.allclose(bring_this_to_z, np.array([0,0,1.])):
-            rmat = rotation_matrix_from_vectors(bring_this_to_z, np.array([0,0,1.]))
-        else:
+        if np.allclose(bring_this_to_z, np.array([0,0,1.])):
             rmat = np.eye(3)
+        elif np.allclose(bring_this_to_z, np.array([0,0,-1.])):
+            rmat = np.diag([1.,-1.,-1.])
+        else:
+            rmat = rotation_matrix_from_vectors(bring_this_to_z, np.array([0,0,1.]))
 
         irmat = np.linalg.inv(rmat)
 
