@@ -787,6 +787,3 @@ Ploting the results...
 -------------------------------------------------
 
 submit `issues`_ regarding the code and examples.
-   
-
-
