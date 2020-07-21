@@ -16,7 +16,7 @@ in standard experimental conditions
 Muon-nuclei interaction
 -----------------------
 
-The interaction of the muon spin :math:`\mathbf{I}_{\mu}` and the :math:`N` nuclear spin :math:`\mathbf{I}_{i}`,  with the effect Electric Field Gradient (EFG) is described by the hamiltonian
+The interaction of the muon spin :math:`\mathbf{I}_{\mu}` and the :math:`N` nuclear spin :math:`\mathbf{I}_{i}`,  with the effect Electric Field Gradient (EFG) is described by the Hamiltonian
 
 .. math::
    :label: total_hamiltonian0
@@ -53,7 +53,7 @@ with :math:`V_i` being the EFG at nuclear site i.
 
 Installalation
 --------------
-UNDI requires both NumPy and QuTip_.
+UNDI requires NumPy, QuTip_ and Mendelev_ Python packages.
 At the moment you can install the first version using
 
 ::
@@ -73,21 +73,20 @@ or using the repository with
 Input
 -----
 
-The input is defined by the following data:
+The input is defined by a list of dictionaries. The details for the
+muon and the nuclei can be set with the following keys:
 
 - **Position**  : 3D vector position of the nuclei, muon expressed in Cartesian Coordinates.
 
-- **Label**  :  A string use to define the type of the nuclei, it is Isotope. A default label of 'mu' is always used to define muon.
+- **Label**  :  A string defining the nucleus or the muon. Can be either the element or the isotope name. The label 'mu' must always be introduced to define the muon details.
 
-- **Spin**  : Nuclear spin (optional), A python mendelev package is used to define the spin value if **Label** of the nuclei is correctly define (see example below),
+- **Spin**  : Nuclear spin (optional), the mendelev package is used to obtain the spin value using the information in **Label**,
 
 - **Gamma** :  Gyromagnetic ratio (optional). Same as above,
 
-- **ElectricQuadrupoleMoment [Optional]**  : Nuclear quadrupole moment for nuclei spin :math:`\mathbf{I}_{i}` , **Spin** > :math:`1/2`
+- **ElectricQuadrupoleMoment**  : Nuclear quadrupole moment for the nucleus (optional for :math:`\mathbf{I} > 1/2`),
 
-- **EFGTensor [Optional]**  : 3D EFG tensor expressed in Cartesian coordinates
-
-All the above parameters are accepted as input list of python dictionaries as shown in the examples.
+- **EFGTensor**  : 3D array with the EFG tensor expressed in Cartesian coordinates (optional).
 
 Some important conventions
 --------------------------
@@ -100,10 +99,10 @@ Before you start playing with UNDI through examples, a few important information
 * UNDI assumes that the spin polarization is along :math:`z` and
   that observation is done along the same direction.
   You must rotate the sample definition accordingly (there is
-  a function to do that). Initial polarization along arbitraty
+  a function to do that). Initial polarization along arbitrary
   directions is presently implemented only in Celio's method.
 
-* As a consequence, in genrale, an external field applied along :math:`z`
+* As a consequence, in general, an external field applied along :math:`z`
   is a Longitudinal Field (LF) while external fields in the plane
   perpendicular to :math:`z` are Transverse Fields (TF).
 
@@ -121,3 +120,4 @@ that reproduce some results already published in literature.
 
 
 .. _QuTip: http://qutip.org
+.. _Mendelev: https://github.com/lmmentel/mendeleev
