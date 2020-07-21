@@ -779,7 +779,6 @@ Ploting the results...
    :width: 400px
    
    Muon spin polarization along the [111] direction as a function of time for various applied longitudinal fields.
-   The exact result (dash-dotted line) is compared with the approximated one (continuous lines).
    
 
 
