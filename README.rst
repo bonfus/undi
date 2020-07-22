@@ -2,6 +2,10 @@ UNDI
 ----
 
 mUon Nuclear Dipolar Interaction (UNDI) is a small python library to
-compute the expected signal from muon-nuclear dipolar interaction.
+compute the time dependence of the spin polarization of a muon 
+interacting with a number of neighbouring nuclei in a solid.
 
-It's in a very early stage of development, don't use it yet.
+The presence of electric field gradients on the nuclei of the hosting
+material and externally applied fields can be easily introduced.
+
+The code is documented at https://undi.readthedocs.io .
