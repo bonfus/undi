@@ -24,55 +24,6 @@ J_to_neV = 6.241508e27 # 1 J = 6.241508e27 neV
 planck2pi_neVs = 6.582117e-7 #planck2pi [neV*s]
 one_over_plank2pi_neVs = 1. / planck2pi_neVs
 
-def rand_rotation_matrix(deflection=1.0, randnums=None):
-    """Creates a random rotation matrix.
-
-    Parameters
-    ----------
-    deflection :
-        the magnitude of the rotation. For 0, no rotation; for 1, completely random rotation. Small deflection => small perturbation. (Default value = 1.0)
-    randnums :
-        3 random numbers in the range [0, 1]. If `None`, they will be auto-generated. (Default value = None)
-
-    Returns
-    -------
-    numpy.array
-        Random matrix
-    """
-    # from http://www.realtimerendering.com/resources/GraphicsGems/gemsiii/rand_rotation.c
-
-    if randnums is None:
-        randnums = np.random.uniform(size=(3,))
-
-    theta, phi, z = randnums
-
-    theta = theta * 2.0*deflection*np.pi  # Rotation about the pole (Z).
-    phi = phi * 2.0*np.pi  # For direction of pole deflection.
-    z = z * 2.0 * deflection  # For magnitude of pole deflection.
-
-    # Compute a vector V used for distributing points over the sphere
-    # via the reflection I - V Transpose(V).  This formulation of V
-    # will guarantee that if x[1] and x[2] are uniformly distributed,
-    # the reflected points will be uniform on the sphere.  Note that V
-    # has length sqrt(2) to eliminate the 2 in the Householder matrix.
-
-    r = np.sqrt(z)
-    Vx, Vy, Vz = V = (
-        np.sin(phi) * r,
-        np.cos(phi) * r,
-        np.sqrt(2.0 - z)
-        )
-
-    st = np.sin(theta)
-    ct = np.cos(theta)
-
-    R = np.array(((ct, st, 0), (-st, ct, 0), (0, 0, 1)))
-
-    # Construct the rotation matrix  ( V Transpose(V) - I ) R.
-
-    M = (np.outer(V, V) - np.eye(3)).dot(R)
-    return M
-
 
 class MuonNuclearInteraction(object):
     """The main UNDI class"""
@@ -595,6 +546,12 @@ class MuonNuclearInteraction(object):
             a[p1], a[p2] = a[p2], a[p1]
             return a
 
+        # Sanity checks
+        if k < 1:
+            raise ValueError("Invalid value for Trotter expansion.")
+        if (np.abs(np.diff(tlist,2)) > 1e-15).any():
+            raise ValueError("Please provide a uniformly spaced sequence of times.")
+
         # internal copy
         atoms = self.atoms
         n_atoms = len(atoms)
@@ -1062,6 +1019,9 @@ if __name__ == '__main__':
     Minimal example showing how to obtain FmuF polarization function.
     """
     import matplotlib.pyplot as plt
+    SAVE_REFERENCE=False
+    COMPARE_REFERENCE=False
+
     angtom=1.0e-10 # m
 
     # This is a linear F-mu-F along z
@@ -1117,9 +1077,32 @@ if __name__ == '__main__':
 
     signal_FmuF_with_Fdip /= 3.
 
+    # no cutoff, with Celio (just for testing purposes...)
+    NS = MuonNuclearInteraction(atoms, log_level='info')
+    NS.translate_rotate_sample_vec([0,0,1])
+
+    signal_FmuF_Celio = np.zeros_like(tlist)
+    for _ in range(12):
+        signal_FmuF_Celio += NS.celio(tlist, k=4)
+
+    NS = MuonNuclearInteraction(atoms, log_level='info')
+    NS.translate_rotate_sample_vec([0,1,0])
+    for _ in range(12):
+        signal_FmuF_Celio += NS.celio(tlist, k=4)
+
+
+    NS = MuonNuclearInteraction(atoms, log_level='info')
+    NS.translate_rotate_sample_vec([1,0,0])
+    for _ in range(12):
+        signal_FmuF_Celio += NS.celio(tlist, k=4)
+
+
+    signal_FmuF_Celio /= 3.*12.
+
     fig, axes = plt.subplots(1,1)
     axes.plot(tlist, signal_FmuF, label='Computed', linestyle='-')
     axes.plot(tlist, signal_FmuF_with_Fdip, label='Computed, with F-F interaction', linestyle='-.')
+    axes.plot(tlist, signal_FmuF_Celio, label='Computed with Celio method', linestyle='--')
 
     # Generate and plot analytical version for comparison
     def plot_brewer(interval,r):
@@ -1143,3 +1126,28 @@ if __name__ == '__main__':
     axes.grid()
     fig.legend()
     plt.show()
+
+    if SAVE_REFERENCE:
+        np.savez('reference.npz', signal_FmuF=signal_FmuF,
+                                  signal_FmuF_with_Fdip=signal_FmuF_with_Fdip,
+                                  signal_FmuF_Celio=signal_FmuF_Celio)
+    if COMPARE_REFERENCE:
+        reference_data = np.load('reference.npz')
+
+        fig, axes = plt.subplots(1,1)
+        axes.plot(tlist, signal_FmuF, label='Computed', linestyle='-')
+        axes.plot(tlist, reference_data['signal_FmuF'], label='Reference', linestyle='--')
+        fig.legend()
+        plt.show()
+
+        fig, axes = plt.subplots(1,1)
+        axes.plot(tlist, signal_FmuF_with_Fdip, label='Computed, with F-F interaction', linestyle='-')
+        axes.plot(tlist, reference_data['signal_FmuF_with_Fdip'], label='Reference', linestyle='--')
+        fig.legend()
+        plt.show()
+
+        fig, axes = plt.subplots(1,1)
+        axes.plot(tlist, signal_FmuF_Celio, label='Computed with Celio method', linestyle='-')
+        axes.plot(tlist, reference_data['signal_FmuF_Celio'], label='Reference', linestyle='--')
+        fig.legend()
+        plt.show()
