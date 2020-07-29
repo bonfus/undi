@@ -404,7 +404,7 @@ class MuonNuclearInteraction(object):
             if 'EFGTensor' in self.atoms[i].keys():
                 self.atoms[i]['EFGTensor'] = np.dot(rmat, np.dot(self.atoms[i]['EFGTensor'], irmat))
 
-    def create_H(self, cutoff = 10.0E-10):
+    def _create_H(self, cutoff = 10.0E-10):
         """Generates the Hamiltonian
 
         Parameters
@@ -699,7 +699,7 @@ class MuonNuclearInteraction(object):
         None
         """
         # generate Hamiltonian
-        self.create_H(cutoff)
+        self._create_H(cutoff)
 
         # find the energy eigenvalues of the composite system
         self.evals, self.ekets = self.H.eigenstates()
@@ -745,18 +745,34 @@ class MuonNuclearInteraction(object):
 
 
     def matrix_elements(self, direction=[0,0,1]):
-        """This computes the elements <v|O|v> where O is the observation
-        direction. Simple but slow implementation.
+        """This function computes the square of the matrix elements of the
+        spin operator of the muon, i.e. :math:`|<v|O_{\mu}|v>|^2`, along
+        the direction specified in `direction`.
+        This is used to quickly compute this trace
+
+        .. math::
+
+             Tr \\left[ \\rho_{sys} \\sigma \\sigma (t) \\right]
+
+
+
+        with the observation and initial polarization along `direction`,
+        where :math:`\\rho_{sys}` is the density matrix of the system
+        (excluding the muon).
+        Simple but slow implementation.
 
         Parameters
         ----------
         direction : list
-            not used, don't touch it. The code will complain if you do. (Default value = [0, 0, 1])
+            accepts three possible directions specifiec as a list of 3 integers:
+            X: [1,0,0],
+            Y: [0,1,0],
+            Z: [0,0,1]
 
         Returns
         -------
         numpy.array
-            Square of matrix elements
+            Square of matrix elements.
         """
 
         atoms = self.atoms
