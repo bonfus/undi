@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='undi',
-      version='0.9',
+      version='1.0',
       description='Muon-Nuclear Dipolar Interaction',
       long_description=open('README.rst').read(),
       classifiers=['License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
