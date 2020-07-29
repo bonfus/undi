@@ -219,7 +219,7 @@ class MuonNuclearInteraction(object):
 
         # check spins
         for a in atoms:
-            v = 2*a['Spin']+1
+            v = 2*a['Spin']+1.
             if not v.is_integer():
                 raise RuntimeError('Spin of atom number {} is strange!'.format(i))
 
@@ -768,11 +768,14 @@ class MuonNuclearInteraction(object):
 
         AA = np.zeros([len(ekets),len(ekets)], dtype=np.complex)
 
-        # Chose measuring direction
-        if direction != [0,0,1]:
+        if direction == [0,0,1]:
+            O = Oz
+        elif direction == [0,1,0]:
+            O = Oy
+        elif direction == [1,0,0]:
+            O = Ox
+        else:
             raise NotImplemented
-
-        O = Oz #qdot( (Ox, Oy, Oz), direction )
 
         for idx in range(len(ekets)):
             for jdx in range(len(ekets)):
@@ -808,12 +811,16 @@ class MuonNuclearInteraction(object):
 
         w = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.float))
 
-        if direction != [0,0,1]:
+        if direction == [0,0,1]:
+            O = Oz
+        elif direction == [0,1,0]:
+            O = Oy
+        elif direction == [1,0,0]:
+            O = Ox
+        else:
             raise NotImplemented
 
-        #qdot( (Ox, Oy, Oz), direction )
-
-        w = np.square(  np.abs(   allkets.conjugate().T*Oz.data.toarray()*allkets  )   ) # AAx = allkets.T*Ox.data.toarray()*allkets
+        w = np.square( np.abs( allkets.conjugate().T*O.data.toarray()*allkets ) ) # AAx = allkets.T*Ox.data.toarray()*allkets
 
         #
         # This is what is done above...
@@ -867,8 +874,17 @@ class MuonNuclearInteraction(object):
 
     def _generate_signal(self, tlist, w):
         """ This function evaluates the time evolution operator at the
-        times provided in tlist
+        times provided in tlist.
+        It is later used to compute:
 
+        .. math::
+
+            \signa(t) = \exp \left( i\frac{H}{\hbar} t \right) \sigma \exp \left( -i\frac{H}{\hbar} t \right)
+
+        It eventually compute the trace assuming the initial spin direction
+        to be paralllel to the measurement direction and both parallel to z.
+        This assumption makes the code considerably faster and does not
+        really represent a limit for the user.
 
         Parameters
         ----------
@@ -891,15 +907,21 @@ class MuonNuclearInteraction(object):
         ediffs  = np.subtract.outer(evals, evals)
         ediffs *= one_over_plank2pi_neVs
 
-        for idx in range(len(evals)):
-            self.logger.info('Adding signal {}...'.format(idx))
-            for jdx in range(len(evals)):
-                signal += np.exp( 1.j*ediffs[idx,jdx]*tlist ) * w[idx,jdx] # 6.582117e-7 =planck2pi [neV*s]
+        # The code below is faster for small systems, but longer for large ones.
+        # A better implementation should exploit Hermiticity.
+        #
+        # for idx in range(len(evals)):
+        #     self.logger.info('Adding signal {}...'.format(idx))
+        #     for jdx in range(len(evals)):
+        #         signal += np.exp( 1.j*ediffs[idx,jdx]*tlist ) * w[idx,jdx] # 6.582117e-7 =planck2pi [neV*s]
+        #
+        for i, t in enumerate(tlist):
+            signal[i] = np.sum( np.multiply( np.exp( 1.j*ediffs*t ), w ) )
 
         return ( np.real_if_close(signal / self.Hdim ) )
 
     def _generate_approximated_signal(self, tlist, w, weps=1e-18, feps=1e-14):
-        """Same as above, but slightly faster.
+        """Same as _generate_signal, but slightly faster.
 
         Parameters
         ----------
