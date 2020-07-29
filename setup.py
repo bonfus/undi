@@ -5,10 +5,13 @@ def readme():
         return f.read()
 
 setup(name='undi',
-      version='0.1',
+      version='0.9',
       description='Muon-Nuclear Dipolar Interaction',
-      classifiers=['License :: OSI Approved :: GPLv3 License',
-                   'Programming Language :: Python',
+      long_description=open('README.rst').read(),
+      classifiers=['License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+                   'Programming Language :: Python :: 3 :: Only',
+                   'Operating System :: OS Independent',
+                   'Intended Audience :: Science/Research',
                    'Topic :: Scientific/Engineering :: Physics'],
       keywords='muSR spin nuclear',
       url='http://github.com/bonfus/undi',
@@ -17,11 +20,9 @@ setup(name='undi',
       license='GPLv3',
       packages=['undi'],
       include_package_data=True,
-            install_requires = [
-                                'numpy',
-                                'qutip',
-                                'mendeleev'
-                                ],
+      install_requires = [
+                          'numpy',
+                          'qutip',
+                          'mendeleev'
+                          ],
       zip_safe=False)
-
-
