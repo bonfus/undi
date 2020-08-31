@@ -397,6 +397,31 @@ class MuonNuclearInteraction(object):
         else:
             rmat = rotation_matrix_from_vectors(bring_this_to_z, np.array([0,0,1.]))
 
+        self.translate_rotate_sample(rmat)
+
+    def translate_rotate_sample(self, rmat):
+        """This function translates all positions in order to put the muon at
+        the origin of the Cartesian axis system and rotates the atomic position
+        according to rmat. EFG tensors are rotated as well.
+
+        Parameters
+        ----------
+        rmat :
+            3D rotation matrix.
+
+        Returns
+        -------
+        None
+        """
+        natoms = len(self.atoms)
+
+        # Bring muon to origin
+        for a in self.atoms:
+            if a['Label'] == 'mu':
+                mup = a['Position']
+        for i in range(natoms):
+            self.atoms[i]['Position'] = self.atoms[i]['Position'] - mup
+
         irmat = np.linalg.inv(rmat)
 
         for i in range(natoms):
