@@ -8,3 +8,4 @@ Examples
    Cu
    FmuF
    LaCuO4
+   Al
