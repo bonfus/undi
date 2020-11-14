@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-#| ## LaCuO4
+#| # LaCuO4
 #| 
 #| This notebook tries to reproduce the results first appeared in
 #| 
@@ -227,7 +227,7 @@ def gen_signal(atoms, pol_direction, k=2, nrep=1):
 
 
 
-#| ## Sites
+#| ### Sites
 #|
 #| Here we go through the various sites analyzed in the papers.
 #|

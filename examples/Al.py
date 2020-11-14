@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#| # Muon in Al octahedral site, with 6 nearest neighbors Al nuclei for the muon.
+#| # Octahedral site of FCC Al
 #| Author: Jonathan Frassineti
 #|
 #| This example shows how to use the Celio approximation as implemented in UNDI.
@@ -8,10 +8,14 @@
 #| For the physical aspects, see A.Yaouanc and P. de Réotier, Muon Spin Rotation, Relaxation and Resonance,
 #| Oxford University Press, 2010, chapter 7, Fig. 7.8.
 
-from undi import MuonNuclearInteraction
+try:
+    from undi import MuonNuclearInteraction
+except (ImportError, ModuleNotFoundError):
+    import sys
+    sys.path.append('../undi')
+    from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import interp1d
 
 #| Define physical constants.
 
@@ -22,12 +26,8 @@ epsilon0 = 8.8541878e-12 # Vacuum permittivity, in Ampere^2*kilogram^−1*meter^
 h = 6.6260693e-34 # J*s, Planck's constant.
 hbar = h/(2*np.pi) # J*s, reduced Planck's constant.
 
-spin_mu = 1/2 # Muon spin.
-spin_Al = 5/2 # 27Al spin.
 Quadrupole_moment_Al = 0.1466e-28 # m^2, quadrupole moment of Al.
-gamma_mu = 2*np.pi*135.5e6 # sT^-1, gyromagnetic ratio of muon.
-gamma_Al = 69.76e6 # sT^-1, gyromagnetic ratio of Al.
-omega = 0.70e6 # Quadrupolar resonance frequency of Al, in us^-1.
+omega_E = 0.70e6 # Quadrupolar resonance frequency of Al, in us^-1.
 
 #| Define the rotation matrix that brings the diagonal of the FCC lattice
 #| along z.
@@ -47,24 +47,21 @@ Al_pos = np.array([[ 0. ,   0.,  -0.5],
                    [ 0. , - 0.5,  0.0]])
 
 
-#| Define the atomic structure. Note that positions are rotated first.
+#| Define the atomic structure. Note that positions are rotated first and then
+#| transformed into Cartesian coordinates and SI units.
 
 atoms = [
-
-    {'Position': R.dot(mu_pos)*angtom*a,
-     'Label': 'mu',
-     'Gamma': gamma_mu,
-     'Spin': spin_mu},
-     ]
+        {'Position': R.dot(mu_pos)*angtom*a,
+         'Label': 'mu'
+        }
+    ]
 
 for i in range(6):
     atoms.append(
         {'Position': R.dot(Al_pos[i])*angtom*a,
         'Label': '27Al',
         'ElectricQuadrupoleMoment': Quadrupole_moment_Al,
-        'Gamma': gamma_Al,
-        'Spin':  spin_Al,
-        'OmegaQmu': omega
+        'OmegaQmu': omega_E
         }
     )
 
@@ -89,7 +86,7 @@ for i, B in enumerate(LongitudinalFields):
     # Align the external field along z i.e. parallel to the muon spin.
     B_pos = B*np.array([0.,0.,1.])
 
-    NS_positive = MuonNuclearInteraction(atoms, external_field=B_pos, log_level='info')
+    NS_positive = MuonNuclearInteraction(atoms, external_field=B_pos, log_level='warn')
 
     signal_positive_EFG[i] = NS_positive.celio(tlist,  k=3)
 
@@ -108,7 +105,7 @@ for i, a in enumerate(atoms):
     if 'OmegaQmu' in a.keys():
         atoms[i]['OmegaQmu'] = -a['OmegaQmu']
 
-NS_negative = MuonNuclearInteraction(atoms, external_field=B_neg, log_level='info')
+NS_negative = MuonNuclearInteraction(atoms, external_field=B_neg, log_level='warn')
 
 signal_negative_EFG = NS_negative.celio(tlist,  k=3)
 
