@@ -248,9 +248,8 @@ class MuonNuclearInteraction(object):
         self.logger = logger or logging.getLogger(__name__)
 
         if log_level:
-            level_config = {'debug': logging.DEBUG, 'info': logging.INFO}
             try:
-                self.logger.setLevel(level_config[log_level.lower()])
+                self.logger.setLevel(getattr(logging, log_level.upper()))
             except:
                 self.logger.warning("Invalid logging level")
 
