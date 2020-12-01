@@ -70,7 +70,7 @@ for i in range(6):
 #| The muon polarization is obtained with the method introduced by Celio.
 
 steps = 100
-tlist = np.linspace(0, 20e-6, steps) # Time scale, in microseconds.
+tlist = np.linspace(0, 20e-6, steps) # Time scale, in seconds.
 
 #| Define the applied external magnetic fields, in Tesla.
 
