@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
-#| #  Hartmann (1977)
+#| #  Hartmann
 #|
 #| Authors: Jonathan Frassineti and Pietro Bonfà
 #|
-#| **Disclaimer**: this is a work in progress!
-#| 
-#| The simulations that follow reproduce the case of Cu for different transversal magnetic field 
+#| This example reproduces the findings of Hartmann in
+#| [PRL 39 832 (1977)](https://journals.aps.org/prl/pdf/10.1103/PhysRevLett.39.832), but in the
+#| hard (stupid?!) way, without using the secular approximation and calculating
+#| the spread of local magnetic fields directly from the polarization.
+#|
+#| The simulations that follow can for example reproduce the case of Cu
+#| for different transverse magnetic fields
 #| applied along the [1,0,0], [1,1,0] and [1,1,1] directions.
 #|
-#| Description of Hartmann findings and method goes here.
-#|
 #| The different reduced damping rates 'b_Har' are shown in the figure.
-#|'b_Har' is related to the width of the Gaussian field distribution 'delta_TF' through the formula:
+#|'$b_{Har}$ is related to the width of the Gaussian field distribution $\Delta_TF$ through the formula:
 #|
 #| $$
 #| b_{Har} = \frac{4\pi\Delta_{TF}}{\mu_0\gamma_{Cu}\hbar}
 #| $$
 #|
-#| A larger 'delta_TF' means a larger width of Gaussian field distribution, and so a higher
-#| depolarization for the muon polarization signal due to the presence of larger values of internal fields,
-#| randomly distributed around the muon.
-#| For the physical aspects, see A.Yaouanc and P. de Réotier, Muon Spin Rotation, Relaxation and Resonance,
+#| For a more detailed description see
+#| A.Yaouanc and P. de Réotier, Muon Spin Rotation, Relaxation and Resonance,
 #| Oxford University Press, 2010, chapter 6, Fig. 6.19 (left).
 
 try:
@@ -31,24 +31,25 @@ except (ImportError, ModuleNotFoundError):
     from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import moment 
+from scipy.stats import moment
 from scipy.signal import savgol_filter
- 
+
 #| Define physical constants.
 
-COMPUTE = False
+COMPUTE = False # Computation takes some time (~30 min)
+                # When set to False, results previously
+                # obtained and stored in this folder are
+                # used.
 
 fields = 15 # Number of transversal external fields applied.
-axis = 3 # Number of different axis where B is applied.
 angtom = 1.0e-10 # m, Angstrom.
-a = 3.597 # Cu lattice constant, in Angstrom.
+a = 3.6 # Cu lattice constant, in Angstrom.
 elementary_charge = 1.6021766e-19 # Elementary charge, in Coulomb = Ampere*second.
 epsilon0 = 8.8541878e-12 # Vacuum permittivity, in Ampere^2*kilogram^−1*meter^−3*second^4.
-mu0 = 4*np.pi*1e-7
+mu0 = 4*np.pi*1e-7 # Hm^-1
 h = 6.6260693e-34 # J*s, Planck's constant.
 hbar = h/(2*np.pi) # J*s, reduced Planck's constant.
 
-Quadrupole_moment_Cu = - 0.22e-28 # m^2, quadrupole moment of Cu.
 gamma_mu = 2*np.pi*135.5e6 # sT^-1, gyromagnetic ratio of muon.
 gamma_Cu = 71.118e6 # sT^-1, gyromagnetic ratio of Cu.
 omega = -1.378879e6/3. # Quadrupolar resonance frequency of Cu, in s^-1.
@@ -94,7 +95,7 @@ def gen_atoms(positions):
                 {'Position': positions[i],
                     'Label': 'mu'
                 } if i == 0 else # first element is the muon
-                
+
                 {'Position': positions[i],
                     'Label': '63Cu',
                     'OmegaQmu': 3*omega
@@ -103,14 +104,14 @@ def gen_atoms(positions):
 
 
 #| ## Polarization function.
-#| 
+#|
 #| The muon polarization is obtained with the method introduced by Celio.
-    
-time_max = 20e-6 # Value of the temporal window, in microseconds.
-freq_max = 400e6 # Value of the sampling frequency, in Hz. 
-                 # This is 10 times the maximum Larmor frequency used in this sample, 
+
+time_max = 20e-6 # Value of the temporal window, in seconds.
+freq_max = 400e6 # Value of the sampling frequency, in Hz.
+                 # This is 10 times the maximum Larmor frequency used in this sample,
                  # about 40 MHz. This has been done to avoid aliasing.
-                 
+
 steps = int(freq_max*time_max) # Number of steps used to simulate the signal.
 tlist = np.linspace(0,time_max,steps) # Time scale, in seconds.
 
@@ -118,42 +119,41 @@ tlist = np.linspace(0,time_max,steps) # Time scale, in seconds.
 #| With these values, we obtain a maximum applied external field of 0.58 T.
 factors = np.logspace(np.log2(1),np.log2(30),fields,base=2)
 TF = factors * np.abs(omega)/gamma_Cu
+# direction of transverse field
+B_dir = np.array([1.,0.,0.])
 
-#| Used to align the magnetic fields along x.
-    
-B_ext = np.array([1.,0.,0.])
-
-#| This is the Celio method for the polarization function.
+#| Here we use the Celio method for the computation of the polarization functions.
+#| Computation is long and when COMPUTE==False stored values are used.
 if COMPUTE:
     print("Computing signal for positive EFGs...", end='', flush=True)
-    
+
     signal = np.zeros((fields, axis, steps))
-    
+
     for i in range(fields):
         #| Align the magnetic fields along x.
-        B = TF[i]*B_ext
-    
+        B = TF[i]*B_dir
+
         # do not rotate aanything yet
         R = np.eye(3)
         rpos = np.dot(R,pos.T).T
         NS = MuonNuclearInteraction(gen_atoms(rpos), external_field=B, log_level='info')
         signal[i,0,:] = NS.celio(tlist,  k=1) + NS.celio(tlist,  k=1)
         del NS
-        
+
         # rotate 45 deg with axis=z to get [110] along B direction, which is x
         R = rotation_matrix([0,0,1], np.pi/4)
         rpos = np.dot(R,rpos.T).T
         NS = MuonNuclearInteraction(gen_atoms(rpos), external_field=B, log_level='info')
         signal[i,1,:] = NS.celio(tlist,  k=1) + NS.celio(tlist,  k=1)
         del NS
-        
+
         # rotate 45 deg again, but this time with axis y.
         R = rotation_matrix([0,1,0], np.pi/4)
         rpos = np.dot(R,rpos.T).T
         NS = MuonNuclearInteraction(gen_atoms(rpos), external_field=B, log_level='info')
         signal[i,2,:] = NS.celio(tlist,  k=1) + NS.celio(tlist,  k=1)
         del NS
-    
+
     signal /= 2.
     print('done!')
 else:
@@ -161,8 +161,10 @@ else:
     tlist = data.get('tlist')
     signal = data.get('signal')
 
+#| ## Fourier transform
+#|
 #| This is the part used to do the Fourier transform on the simulated polarization functions.
-#| The polarization function for a tranvsverse filed is approsimated by:
+#| The polarization function for a tranvsverse filed is approximated by:
 #| $$
 #| P_x = \exp(-\frac{1}{2} \Delta_{TF}^2 * \gamma^2 * t^2) * \cos(\gamma * B_{ext} * t)
 #| $$
@@ -178,13 +180,15 @@ else:
 
 # Add some interpolation
 zero_padding = 4
-yf = np.zeros((fields, 3, zero_padding*len(tlist)//2+1), dtype=np.complex)
-xf = np.fft.rfftfreq(zero_padding*len(tlist), tlist[1])
+# prepare spaze for Fourier transforms...
+yf = np.empty((fields, 3, zero_padding*len(tlist)//2+1), dtype=np.complex)
+# ...but work in omega domain, not in frequency, notice   VVV
+xf = np.fft.rfftfreq(zero_padding*len(tlist), tlist[1]/(2*np.pi))
 
-amp      = np.zeros((fields, 3))
-mean     = np.zeros((fields, 3))
-stddev   = np.zeros((fields, 3))
-bhar     = np.zeros((fields, 3))
+amp      = np.empty((fields, 3))
+mean     = np.empty((fields, 3))
+stddev   = np.empty((fields, 3))
+bhar     = np.empty((fields, 3))
 
 
 #| Fourier transform of i-th polarization signal for the three axis.
@@ -192,23 +196,41 @@ bhar     = np.zeros((fields, 3))
 from scipy.optimize import curve_fit
 def gauss(x, *p):
     A, mu, sigma = p
-    return A*np.exp(-(x-mu)**2/(2.*sigma**2))
+    return A*np.exp(-0.5*(x-mu)**2/(sigma**2))
 
 for i in range(fields):
     for j in range(3):
         yf[i,j] = np.fft.rfft(signal[i,j], zero_padding*len(tlist))
-        
-        coeff, var_matrix = curve_fit(gauss, xf, np.real(yf[i,j]), p0=[np.real(yf[i,j]).max(), xf[np.argmax(np.real(yf[i,j]))], 10e6])
+        # Gaussian fit of the real part of the FFT.
+        coeff, var_matrix = curve_fit(gauss, xf,
+                                      np.real(yf[i,j]),
+                                      p0=[np.real(yf[i,j]).max(),
+                                          xf[np.argmax(np.real(yf[i,j]))],
+                                          200000]
+                                      )
         amp[i,j], mean[i,j], stddev[i, j] = np.abs(coeff)
+        # We calculate the width of the field distribution 'delta_TF' at
+        # the muon site.
+        Delta_TF = stddev[i, j]/gamma_mu
+        # Finally, we calculate the reduced damping rate 'b_Har' for the
+        # three different magnetic field orientations.
+        bhar[i,j] = (4*np.pi*Delta_TF*(a*angtom)**3)/(gamma_Cu*hbar*mu0)
 
-        # We calculate the width of the field distribution 'delta_TF'.
-    
-        delta = stddev[i, j]/(gamma_Cu)
-    
-        # Finally, we calculate the reduced damping rate 'b_Har' for the three different magnetic field orientations.
-    
-        bhar[i,j] = (4*np.pi*delta*(a*angtom)**3)/(gamma_Cu*hbar*mu0)
-       
+#| Plot time functions
+
+ncols = 3
+nrows = fields
+fig, axes = plt.subplots(nrows, ncols, figsize=(10,30))
+l=0
+for ax in axes.flat:
+    i=l//3
+    j=l%3
+    ax.plot(tlist,signal[i,j])
+    ax.plot(tlist,np.exp(-0.5*(stddev[i, j]**2)*tlist**2))
+    ax.set_xlabel('time. [s]')
+    l += 1
+fig.tight_layout()
+plt.show()
 
 
 #| Plot the Fourier transforms.
@@ -234,4 +256,6 @@ fig, axes = plt.subplots(1, 1)
 axes.plot(factors,bhar[:,0], label = 'B // [1,0,0] axis', linestyle='-.')
 axes.plot(factors,bhar[:,1], label = 'B // [1,1,0] axis', linestyle='-.')
 axes.plot(factors,bhar[:,2], label = 'B // [1,1,1] axis', linestyle='-.')
+axes.set_ylabel('$b_{Har}$')
+axes.set_xlabel('$\omega_B/\omega_E$')
 plt.show()

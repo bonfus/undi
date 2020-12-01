@@ -9,3 +9,4 @@ Examples
    FmuF
    LaCuO4
    Al
+   Hartmann
