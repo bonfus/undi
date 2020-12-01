@@ -122,8 +122,7 @@ TF = factors * np.abs(omega)/gamma_Cu
 # direction of transverse field
 B_dir = np.array([1.,0.,0.])
 
-#| Here we use the Celio method for the computation of the polarization functions.
-#| Computation is long and when COMPUTE==False stored values are used.
+# Computation is long and when COMPUTE==False stored values are used.
 if COMPUTE:
     print("Computing signal for positive EFGs...", end='', flush=True)
 
@@ -164,15 +163,15 @@ else:
 #| ## Fourier transform
 #|
 #| This is the part used to do the Fourier transform on the simulated polarization functions.
-#| The polarization function for a tranvsverse filed is approximated by:
+#| The polarization function for a transverse filed is approximated by:
 #| $$
-#| P_x = \exp(-\frac{1}{2} \Delta_{TF}^2 * \gamma^2 * t^2) * \cos(\gamma * B_{ext} * t)
+#| P_x(t) = \exp(-\frac{1}{2} \Delta_{TF}^2 \gamma^2 t^2) \cos(\gamma B_{ext} t)
 #| $$
 #|
 #| The Fourier Transform of this signal is
 #|
 #| $$
-#| \frac{0.5 e^{-\frac{1}{2}\frac{(B \gamma - \omega )^2}{\gamma ^2 \Delta ^2}}+0.5 e^{-\frac{1}{2}\frac{(B \gamma +\omega )^2}{\gamma ^2 \Delta ^2}}}{\sqrt{\gamma ^2 \Delta ^2}}
+#| \mathcal{F}[P_x(t)](\omega)=\frac{0.5 e^{-\frac{1}{2}\frac{(B \gamma - \omega )^2}{\gamma ^2 \Delta_{TF} ^2}}+0.5 e^{-\frac{1}{2}\frac{(B \gamma +\omega )^2}{\gamma ^2 \Delta_{TF} ^2}}}{\sqrt{\gamma ^2 \Delta_{TF} ^2}}
 #| $$
 #|
 #| Assuming the field distribution to be Gaussian, the width ($\sigma$) can be obtained from the (real part)
@@ -250,7 +249,8 @@ for ax in axes.flat:
 fig.tight_layout()
 plt.show()
 
-#| Plot $b_{Har}$
+#| Eventually plot $b_{Har}$ that compares directly with the results
+#| available in the letter cited at the beginning of this example.
 
 fig, axes = plt.subplots(1, 1)
 axes.plot(factors,bhar[:,0], label = 'B // [1,0,0] axis', linestyle='-.')
@@ -258,4 +258,7 @@ axes.plot(factors,bhar[:,1], label = 'B // [1,1,0] axis', linestyle='-.')
 axes.plot(factors,bhar[:,2], label = 'B // [1,1,1] axis', linestyle='-.')
 axes.set_ylabel('$b_{Har}$')
 axes.set_xlabel('$\omega_B/\omega_E$')
+axes.set_ylim([0,40])
+axes.grid()
+fig.legend(loc=9,ncol=3)
 plt.show()
