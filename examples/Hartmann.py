@@ -31,8 +31,7 @@ except (ImportError, ModuleNotFoundError):
     from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import moment
-from scipy.signal import savgol_filter
+from scipy.optimize import curve_fit
 
 #| Define physical constants.
 
@@ -160,9 +159,43 @@ else:
     tlist = data.get('tlist')
     signal = data.get('signal')
 
+#| ## Real space analysis
+
+bhar = np.empty((fields, 3))
+
+def damped_oscillation(x, *p):
+    gB, sigma = p
+    return np.cos(gB*x)*np.exp(-0.5*(sigma*x)**2)
+
+for i in range(fields):
+    for j in range(3):
+
+        coeff, var_matrix = curve_fit(damped_oscillation, tlist,
+                                      signal[i,j],
+                                      p0=[gamma_mu*TF[i], 1e6]
+                                      )
+        gammaB, sigma = np.abs(coeff)
+        # We calculate the width of the field distribution 'delta_TF' at
+        # the muon site.
+        Delta_TF = sigma/gamma_mu
+        # Finally, we calculate the reduced damping rate 'b_Har' for the
+        # three different magnetic field orientations.
+        bhar[i,j] = (4*np.pi*Delta_TF*(a*angtom)**3)/(gamma_Cu*hbar*mu0)
+
+fig, axes = plt.subplots(1, 1)
+axes.plot(factors,bhar_rs[:,0], label = 'B // [1,0,0] axis', linestyle='-.')
+axes.plot(factors,bhar_rs[:,1], label = 'B // [1,1,0] axis', linestyle='-.')
+axes.plot(factors,bhar_rs[:,2], label = 'B // [1,1,1] axis', linestyle='-.')
+axes.set_ylabel('$b_{Har}$')
+axes.set_xlabel('$\omega_B/\omega_E$')
+axes.set_ylim([0,40])
+axes.grid()
+fig.legend(loc=9,ncol=3)
+plt.show()
+
 #| ## Fourier transform
 #|
-#| This is the part used to do the Fourier transform on the simulated polarization functions.
+#| That same can be obtained from the Fourier transform of the simulated polarization functions.
 #| The polarization function for a transverse filed is approximated by:
 #| $$
 #| P_x(t) = \exp(-\frac{1}{2} \Delta_{TF}^2 \gamma^2 t^2) \cos(\gamma B_{ext} t)
@@ -174,8 +207,8 @@ else:
 #| \mathcal{F}[P_x(t)](\omega)=\frac{0.5 e^{-\frac{1}{2}\frac{(B \gamma - \omega )^2}{\gamma ^2 \Delta_{TF} ^2}}+0.5 e^{-\frac{1}{2}\frac{(B \gamma +\omega )^2}{\gamma ^2 \Delta_{TF} ^2}}}{\sqrt{\gamma ^2 \Delta_{TF} ^2}}
 #| $$
 #|
-#| Assuming the field distribution to be Gaussian, the width ($\sigma$) can be obtained from the (real part)
-#| of the Fourier transform.
+#| Assuming the field distribution to be Gaussian, the width ($\sigma$)
+#| can be obtained from the (real part of the) Fourier transform.
 
 # Add some interpolation
 zero_padding = 4
@@ -192,7 +225,6 @@ bhar     = np.empty((fields, 3))
 
 #| Fourier transform of i-th polarization signal for the three axis.
 
-from scipy.optimize import curve_fit
 def gauss(x, *p):
     A, mu, sigma = p
     return A*np.exp(-0.5*(x-mu)**2/(sigma**2))
@@ -244,7 +276,7 @@ for ax in axes.flat:
     ax.plot(xf,gauss(xf,amp[i,j], mean[i,j], stddev[i, j]))
     ax.set_xlim([mean[i,j]-4*np.max(stddev[i, :]),mean[i,j]+4*np.max(stddev[i, :])])
     ax.set(yticks=[])
-    ax.set_xlabel('Freq. [Hz]')
+    ax.set_xlabel('Freq. [rad/s]')
     l += 1
 fig.tight_layout()
 plt.show()
