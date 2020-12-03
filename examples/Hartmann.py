@@ -183,9 +183,9 @@ for i in range(fields):
         bhar[i,j] = (4*np.pi*Delta_TF*(a*angtom)**3)/(gamma_Cu*hbar*mu0)
 
 fig, axes = plt.subplots(1, 1)
-axes.plot(factors,bhar_rs[:,0], label = 'B // [1,0,0] axis', linestyle='-.')
-axes.plot(factors,bhar_rs[:,1], label = 'B // [1,1,0] axis', linestyle='-.')
-axes.plot(factors,bhar_rs[:,2], label = 'B // [1,1,1] axis', linestyle='-.')
+axes.plot(factors,bhar[:,0], label = 'B // [1,0,0] axis', linestyle='-.')
+axes.plot(factors,bhar[:,1], label = 'B // [1,1,0] axis', linestyle='-.')
+axes.plot(factors,bhar[:,2], label = 'B // [1,1,1] axis', linestyle='-.')
 axes.set_ylabel('$b_{Har}$')
 axes.set_xlabel('$\omega_B/\omega_E$')
 axes.set_ylim([0,40])

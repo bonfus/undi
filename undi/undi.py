@@ -130,8 +130,18 @@ class MuonNuclearInteraction(object):
 
 
     @staticmethod
-    def muon_induced_efg(a_i, mu):
+    def muon_induced_efg(a_i, mu, eta=0):
         """Operator for EFG directed along muon-atom direction.
+        The contribution is defined as
+
+        $$
+        \begin{aligned}
+        \mathcal{H}_{\mathrm{Q}, i} &=\frac{e^{2} q_{i} Q_{i}}{4 I_{i}\left(2 I_{i}-1\right)}\left\{\left[3\left(I_{i}^{z}\right)^{2}-\left(I_{i}\right)^{2}\right]+\eta_{i}\left[\left(I_{i}^{x}\right)^{2}-\left(I_{i}^{y}\right)^{2}\right]\right\} \\
+        & \equiv \hbar \omega_{\mathrm{E}}\left\{\left[3\left(I_{i}^{z}\right)^{2}-\left(I_{i}\right)^{2}\right]+\eta_{i}\left[\left(I_{i}^{x}\right)^{2}-\left(I_{i}^{y}\right)^{2}\right]\right\}
+        \end{aligned}
+        $$
+
+        
 
         Parameters
         ----------
