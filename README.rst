@@ -8,4 +8,5 @@ interacting with a number of neighboring nuclei in a solid.
 The presence of electric field gradients on the nuclei of the hosting
 material and externally applied fields can be easily introduced.
 
-The code is documented at https://undi.readthedocs.io .
+The code is documented at https://undi.readthedocs.io and in the 
+`associated pubblication <https://doi.org/10.1016/j.cpc.2020.107719>`_.
