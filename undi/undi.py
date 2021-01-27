@@ -190,7 +190,7 @@ class MuonNuclearInteraction(object):
         Ix, Iy, Iz = I
         p = a_i['Position']
         L = a_i['Spin']
-        expression = a['CustomHamiltonianTerm']
+        expression = a_i['CustomHamiltonianTerm']
         return eval(expression)
 
     @staticmethod
@@ -504,6 +504,11 @@ class MuonNuclearInteraction(object):
                 # Muon induced quadrupolar interaction
                 if 'OmegaQmu' in a_i.keys():
                     H += self.muon_induced_efg(a_i, mu)
+
+        # Custom interaction
+        for i, a_i in enumerate(atoms):
+            if 'CustomHamiltonianTerm' in a_i.keys():
+                H += self.custom_term(a_i)
 
 
         # External field
