@@ -1,11 +1,28 @@
 from setuptools import setup
+import os
+
+try:
+    from pybind11.setup_helpers import build_ext, Pybind11Extension
+    ext_modules = [
+        Pybind11Extension(
+            "fast_quantum",
+            ["undi/fast.cpp"],
+            extra_compile_args='-fopenmp'.split(),
+            extra_link_args='-fopenmp'.split(),
+        ),
+    ]
+
+except ImportError:
+    ext_modules = []
+    build_ext = None
+
 
 def readme():
     with open('README.rst') as f:
         return f.read()
 
 setup(name='undi',
-      version='1.0',
+      version='1.1',
       description='Muon-Nuclear Dipolar Interaction',
       long_description=open('README.rst').read(),
       classifiers=['License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
@@ -25,4 +42,11 @@ setup(name='undi',
                           'qutip',
                           'mendeleev'
                           ],
-      zip_safe=False)
+      extras_require = {
+        'Fast C++ implementation':  ["pybind11"],
+        'Progress bar':  ["tqdm"]
+      },
+      zip_safe=False,
+      ext_modules=ext_modules,
+      cmdclass={"build_ext": build_ext}
+    )

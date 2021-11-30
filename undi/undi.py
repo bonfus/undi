@@ -77,7 +77,8 @@ class MuonNuclearInteraction(object):
 
         # dipolar interaction
         Bd=(mu_0*gamma_i*gamma_j*(hbar**2))/(4*np.pi*(n_of_d**3))
-        Bd*=6.241508e27 # to neV
+        #print('omega_di = ', Bd/hbar)
+        Bd*=J_to_neV # to neV
 
         I = a_i['Operators']
         J = a_j['Operators']
@@ -120,6 +121,7 @@ class MuonNuclearInteraction(object):
         E_q = J_to_neV * ( elementary_charge * Q * Vzz / (4*l *(2*l -1)) )
 
         omega_q = E_q * one_over_plank2pi_neVs
+        #print('omega_q: ',omega_q)
 
         # Quadrupole
         cost = J_to_neV * (elementary_charge * Q /(2*l * (2*l -1)))
@@ -141,7 +143,7 @@ class MuonNuclearInteraction(object):
         \end{aligned}
         $$
 
-        
+
 
         Parameters
         ----------
@@ -168,7 +170,6 @@ class MuonNuclearInteraction(object):
         E_q = planck2pi_neVs * a_i['OmegaQmu']
 
         # Quadrupole
-
         return E_q * ( qdot(n, I) * qdot(n, I) - 0.33333333333*(l * (l+1)))
 
     @staticmethod
@@ -588,7 +589,7 @@ class MuonNuclearInteraction(object):
         # Sanity checks
         if k < 1:
             raise ValueError("Invalid value for Trotter expansion.")
-        if (np.abs(np.diff(tlist,2)) > 1e-15).any():
+        if (np.abs(np.diff(tlist,2)) > 1e-14).any():
             raise ValueError("Please provide a uniformly spaced sequence of times.")
 
         # internal copy
@@ -664,7 +665,9 @@ class MuonNuclearInteraction(object):
                 # position zero went.
                 other_spins[i] = other_spins[0]
 
+                # get the Hamiltonian
                 hh = subspace['H']
+
                 # evolution operator on the small matrix
                 uu = (-1j * hh * one_over_plank2pi_neVs * tt / k).expm()
 
@@ -721,6 +724,230 @@ class MuonNuclearInteraction(object):
             for _ in range(k):
                 for dU in dUs:
                     psi = dU * psi
+
+        return np.real_if_close(r)
+
+    def celio_on_steroids(self, tlist, k=4, direction=[0,0,1.], single_precision=False, progress=True):
+        """This reimplements celio with C++.
+
+        Parameters
+        ----------
+        tlist : list or numpy.array
+            list of times
+        k : int
+            factor for Trotter approximation (Default value = 4)
+        direction : list
+            unused! Don't touch it. The code will complain if you touch it (Default value = [0, 0, 1])
+        single_precision : bool
+            use single precision algorithms (float32). Reduces memory footprint.
+        progress: bool
+            shows a progress bar (requires tqdm)
+        Returns
+        -------
+        numpy.array
+            Muon polarization function along z.
+        """
+        try:
+            from fast_quantum import evolve, measure
+        except ImportError:
+            # python version, should never me used
+            self.logger.log(logging.WARNING, "W"+'AaA'*7+"RNING: using slow python version!!!!")
+            def permuteidx(dims, perm):
+                """
+                generate indexes for exchanging nuclei in permutation `perm`
+                """
+                s = np.prod(dims)
+                original_order = np.sort(perm)
+                return np.moveaxis(np.arange(s).reshape(dims),perm,original_order).flatten()
+
+            def setsecondlast(dims, idx):
+                """
+                Moves nucleus idx to second last position (remember, muon must always be last!)
+                """
+                s = np.prod(dims)
+                return np.swapaxes(np.arange(s,dtype=np.uint64).reshape(dims),idx,-2).flatten()
+            def measure(o,psi):
+                r = 0.
+                for j in range(int(psi.shape[0]/o.shape[0])):
+                    s = j*o.shape[0]
+                    e = (j+1)*o.shape[0]
+                    r += np.dot(np.transpose(np.conjugate(psid[s:e])), np.dot(o,psid[s:e]).T)
+                return r
+            def evolve(o, psi, dims, ui):
+                idxswap = setsecondlast(dims, ui)
+                for j in range(int(psi.shape[0]/o.shape[0])):
+                    s = j*o.shape[0]
+                    e = (j+1)*o.shape[0]
+                    psi[idxswap[s:e]] = np.dot(o , psi[idxswap[s:e]])
+        try:
+            if progress:
+                from tqdm import tqdm
+            else:
+                tdqm = lambda x: x
+        except ImportError:
+            tdqm = lambda x: x
+
+        # Sanity checks
+        if k < 1:
+            raise ValueError("Invalid value for Trotter expansion.")
+        if (np.abs(np.diff(tlist,2)) > 1e-14).any():
+            raise ValueError("Please provide a uniformly spaced sequence of times.")
+
+        # define types
+        if single_precision:
+            ftype = np.float32
+            ctype = np.complex64
+        else:
+            ftype = np.float64
+            ctype = np.complex128
+
+        # internal copy
+        atoms = self.atoms
+        n_atoms = len(atoms)
+
+        mu_idx = -1
+        for l, atom in enumerate(atoms):
+            # record muon position in list. To be used to insert polarized state
+            if atom['Label'] == 'mu':
+                mu_idx = l
+                continue
+        if mu_idx < 0:
+            raise RuntimeError("Where is the muon!?!")
+
+        Subspaces = []
+        for l, atom in enumerate(atoms):
+            if l == mu_idx:
+                continue
+
+            couple = [atoms[l].copy(),  atoms[mu_idx].copy()]
+
+            dims = self.create_hilbert_space(couple)
+
+            H = self.dipolar_interaction(*couple)
+            self.logger.info("Adding interaction between {} and {} with distance {}".format( atoms[mu_idx]['Label'], atom['Label'], np.linalg.norm( atoms[mu_idx]['Position'] - atoms[l]['Position'] ) ) )
+
+            if (couple[0]['Spin'] > 0.5 and 'EFGTensor' in couple[0].keys()):
+                Q, info = self.quadrupolar_interaction(couple[0])
+                H += Q
+            if ( 'OmegaQmu' in couple[0].keys()):
+                H += self.muon_induced_efg(couple[0], couple[1])
+
+            if np.linalg.norm(self._ext_field) > 0.000001:
+                # Add field to atom
+                H += self.external_field(couple[0], self._ext_field)
+                # Add 1/Nth field to muon
+                H += self.external_field(couple[1], self._ext_field/(n_atoms-1))
+
+            # generate maximally mixed state for nuclei (all states populated with random phase)
+            NucHdim = int(2*atom['Spin']+1)
+            #NuclearPsi = Qobj( np.exp(2.j * np.pi * np.random.rand(NucHdim)), type='ket')
+
+            Subspaces.append({'H': H, 'NucHdim': NucHdim})
+
+        # Convert list of dict to dict of list
+        SubspacesInfo = {u: [dic[u] for dic in Subspaces] for u in Subspaces[0]} # https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
+
+
+        #
+        # Notes for future myself.
+        #
+        # Here's the deal: muon the muon must always be the last particle
+        # in the Hilbert space. This allows to work with evolution operators
+        # and observables that are block diagonal, i.e. something like
+        #
+        #   A B 0 0 0 0 0 0
+        #   C D 0 0 0 0 0 0
+        #   0 0 A B 0 0 0 0
+        #   0 0 C D 0 0 0 0
+        #   0 0 0 0 A B 0 0
+        #   0 0 0 0 C D 0 0
+        #   0 0 0 0 0 0 A B
+        #   0 0 0 0 0 0 C D
+        #
+        # thus allowing to work and/or accumulate results on small blocks
+        # of the same size of the observable or the evolution operator.
+        # The bad news is that you have to swap the position of the nuclei
+        # in the wavefunction, making all the algorithm memory bound.
+
+        def computeU(tt, k):
+            """ Computes time evolution operators
+
+            Parameters
+            ----------
+            tt :
+                time step
+            k :
+                factor used in Trotter expansion
+
+            Returns
+            -------
+            list
+                Hamiltonians acting on the various subspaces.
+            """
+            # Computer time evolution operator.
+            #  we will put the muon as the first particle
+            Us = []
+            for i, subspace in enumerate(Subspaces):
+
+                # get the Hamiltonian
+                hh = subspace['H']
+
+                # evolution operator on the small matrix
+                uu = (-1j * hh * one_over_plank2pi_neVs * tt / k).expm()
+
+                Us.append( uu.data.todense().astype(ctype) )
+            return Us
+
+
+        r = np.zeros_like(tlist, dtype=np.complex)
+
+        # observe along direction
+        direction /= np.linalg.norm(direction)
+        if not np.allclose(direction,[0,0,1]):
+            self.logger.log(logging.WARNING, "Polarization different from z not yet fully implemented (but it's easy to implement)")
+            o = qdot((sigmax(), sigmay(), sigmaz()), direction ).data.todense().astype(ctype)
+        else:
+            o = sigmaz().data.todense().astype(ctype)
+
+
+        # Insert muon polarized along positive quantization direction
+        if not np.allclose(direction,[0,0,1]):
+            e, v  = (o+qeye(2)).eigenstates()
+            mu_psi = v[1] if e[1] > 0.1 else v[0]
+        else:
+            mu_psi = basis(2,0)
+
+        # Dimension of the nucler subspace
+        HdimHalf = np.prod(SubspacesInfo['NucHdim'])
+
+        # Full initial state, nuclei and muon (at the end!!)
+        dims=SubspacesInfo['NucHdim'] + [2]
+
+        psid = np.kron( np.exp(2.j * np.pi * np.random.rand(HdimHalf).astype(ftype)) , # Initial (random) state for all nuclei
+                        np.array(mu_psi.data.todense()).flatten().astype(ctype)) # And muon
+
+
+        self.logger.info("Size of wavefunction: {} MB".format( psid.nbytes/1024/1024 ) )
+
+        # Normalize
+        Normalization = 1./np.sqrt(HdimHalf)
+        psid = psid * Normalization
+
+        dUs = computeU(tlist[1]-tlist[0], k)
+
+        for i, t in enumerate(tqdm(tlist)):
+            # measure
+            #mtime = time.perf_counter()
+            r[i] = measure(o, psid)
+
+            # safety check (for 99% of users)
+            if ((i == 0) and (abs(r[0] - 1.0)>1e-7)): self.logger.log(logging.WARNING, "Initial polarization {}?!".format(r[0]))
+
+            # Evolve psi
+            for _ in range(k):
+                for ui, dU in enumerate(dUs):
+                    # compute psi evolution for nucleus ui
+                    evolve(dU, psid, dims, ui)
 
         return np.real_if_close(r)
 
