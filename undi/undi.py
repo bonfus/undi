@@ -752,20 +752,6 @@ class MuonNuclearInteraction(object):
         except ImportError:
             # python version, should never me used
             self.logger.log(logging.WARNING, "W"+'AaA'*7+"RNING: using slow python version!!!!")
-            def permuteidx(dims, perm):
-                """
-                generate indexes for exchanging nuclei in permutation `perm`
-                """
-                s = np.prod(dims)
-                original_order = np.sort(perm)
-                return np.moveaxis(np.arange(s).reshape(dims),perm,original_order).flatten()
-
-            def setsecondlast(dims, idx):
-                """
-                Moves nucleus idx to second last position (remember, muon must always be last!)
-                """
-                s = np.prod(dims)
-                return np.swapaxes(np.arange(s,dtype=np.uint64).reshape(dims),idx,-2).flatten()
             def measure(o,psi):
                 r = 0.
                 for j in range(int(psi.shape[0]/o.shape[0])):
@@ -773,8 +759,7 @@ class MuonNuclearInteraction(object):
                     e = (j+1)*o.shape[0]
                     r += np.dot(np.transpose(np.conjugate(psid[s:e])), np.dot(o,psid[s:e]).T)
                 return r
-            def evolve(o, psi, dims, ui):
-                idxswap = setsecondlast(dims, ui)
+            def evolve(o, psi, idxswap):
                 for j in range(int(psi.shape[0]/o.shape[0])):
                     s = j*o.shape[0]
                     e = (j+1)*o.shape[0]
@@ -935,6 +920,22 @@ class MuonNuclearInteraction(object):
 
         dUs = computeU(tlist[1]-tlist[0], k)
 
+        def permuteidx(dims, perm):
+            """
+            generate indexes for exchanging nuclei in permutation `perm`
+            """
+            s = np.prod(dims)
+            original_order = np.sort(perm)
+            return np.moveaxis(np.arange(s).reshape(dims),perm,original_order).flatten()
+
+        def setsecondlast(dims, idx):
+            """
+            Moves nucleus idx to second last position (remember, muon must always be last!)
+            """
+            s = np.prod(dims)
+            return np.swapaxes(np.arange(s,dtype=np.uint64).reshape(dims),idx,-2).flatten()
+
+        idxswap = [None,] * len(dUs)
         for i, t in enumerate(tqdm(tlist)):
             # measure
             #mtime = time.perf_counter()
@@ -946,8 +947,10 @@ class MuonNuclearInteraction(object):
             # Evolve psi
             for _ in range(k):
                 for ui, dU in enumerate(dUs):
+                    if idxswap[ui] is None:
+                        idxswap[ui] = setsecondlast(dims, ui)
                     # compute psi evolution for nucleus ui
-                    evolve(dU, psid, dims, ui)
+                    evolve(dU, psid, idxswap[ui])
 
         return np.real_if_close(r)
 
