@@ -1,6 +1,6 @@
 #| # F-mu-F
 #| 
-#| The well known F-mu-F signal identified by J.H.Brewer et al. in PRB 33 11 (1986):
+#| The well known F-mu-F signal identified by J.H.Brewer et al. in PRB 33 7813 (1986):
 #| 
 #| $G(t)=\frac{1}{6}\left[3+\cos(\sqrt{3} \omega_\text{D} t)+\left(1-\frac{1}{\sqrt{3}}\right)\cos(\frac{3-\sqrt{3}}{2}\omega_\text{D} t)+\left(1+\frac{1}{\sqrt{3}}\right)\cos(\frac{3+\sqrt{3}}{2}\omega_\text{D} t)\right]$
 
