@@ -77,7 +77,7 @@ class MuonNuclearInteraction(object):
 
         # dipolar interaction
         Bd=(mu_0*gamma_i*gamma_j*(hbar**2))/(4*np.pi*(n_of_d**3))
-        #print('omega_di = ', Bd/hbar)
+        # print('\n\n\n d, omega_di = ', n_of_d, Bd/hbar)
         Bd*=J_to_neV # to neV
 
         I = a_i['Operators']
@@ -111,17 +111,17 @@ class MuonNuclearInteraction(object):
 
         # PAS
         ee, ev = np.linalg.eig(EFG)
-        Vxx,Vyy,Vzz = np.sort(np.abs(ee))
+        Vxx,Vyy,Vzz = ee[np.argsort(np.abs(ee))]
 
         # declare just in case EFG is zero
         eta = 0
-        if Vzz >= 0.00001:
+        if abs(Vzz) >= 0.000001:
             eta = (Vxx-Vyy)/Vzz
 
         E_q = J_to_neV * ( elementary_charge * Q * Vzz / (4*l *(2*l -1)) )
 
         omega_q = E_q * one_over_plank2pi_neVs
-        #print('omega_q: ',omega_q)
+        # print('omega_q: ',omega_q )
 
         # Quadrupole
         cost = J_to_neV * (elementary_charge * Q /(2*l * (2*l -1)))
@@ -160,7 +160,7 @@ class MuonNuclearInteraction(object):
         l = a_i['Spin']
 
         if (l < 0.5001):
-            raise RuntimeError("Ivalid spin")
+            raise RuntimeError("Invalid spin")
 
         I = a_i['Operators']
 
@@ -271,6 +271,7 @@ class MuonNuclearInteraction(object):
             label = atom.get('Label', None)
             pos   = atom.get('Position', None)
             gamma = atom.get('Gamma', None)
+            quadrupole_moment = atom.get('ElectricQuadrupoleMoment', None)
 
             # validation
             if pos is None:
@@ -323,6 +324,11 @@ class MuonNuclearInteraction(object):
                     self.logger.warning("Warning, overriding gamma for {}".format(label))
                 else:
                     atoms[i]['Gamma'] = isotope.g_factor * 7.622593285e6 * 2. * pi  #  \mu_N /h, is 7.622593285(47) MHz/T that in turn is equal to  γ_n / (2 π g_n)
+
+                if quadrupole_moment:
+                    self.logger.warning("Warning, overriding quadrupole moment for {}".format(label))
+                else:
+                    atoms[i]['ElectricQuadrupoleMoment'] = isotope.quadrupole_moment * 1e-28 # m^2
 
             # increase Hilbert space dimension
             self.Hdim *= (2*atoms[i]['Spin']+1)
@@ -764,6 +770,7 @@ class MuonNuclearInteraction(object):
                     s = j*o.shape[0]
                     e = (j+1)*o.shape[0]
                     psi[idxswap[s:e]] = np.dot(o , psi[idxswap[s:e]])
+        # Import optional progress bar
         try:
             if progress:
                 from tqdm import tqdm
@@ -771,6 +778,14 @@ class MuonNuclearInteraction(object):
                 tdqm = lambda x: x
         except ImportError:
             tdqm = lambda x: x
+        # Import fast random number generator (possibly)
+        try:
+            if single_precision:
+                from omprnd import unif01 as uniform01
+            else:
+                from omprnd import unid01 as uniform01
+        except ImportError:
+            from numpy.random import rand as uniform01
 
         # Sanity checks
         if k < 1:
@@ -908,7 +923,7 @@ class MuonNuclearInteraction(object):
         # Full initial state, nuclei and muon (at the end!!)
         dims=SubspacesInfo['NucHdim'] + [2]
 
-        psid = np.kron( np.exp(2.j * np.pi * np.random.rand(HdimHalf).astype(ftype)) , # Initial (random) state for all nuclei
+        psid = np.kron( np.exp(2.j * np.pi * uniform01(HdimHalf).astype(ftype)) , # Initial (random) state for all nuclei
                         np.array(mu_psi.data.todense()).flatten().astype(ctype)) # And muon
 
 
@@ -1264,7 +1279,7 @@ class MuonNuclearInteraction(object):
         return ( np.real_if_close(signal / self.Hdim ) )
 
 
-    def zero_field_distribution_powder(self):
+    def zero_field_distribution_powder(self, atoms=None):
         """Calculates gamma_mu ^2 DeltaG ^2, where gamma_mu is the
             gyromagnetic ratio of the muon and Delta^2 is the variance of
             a Gaussian field distribution, using the secular approximation
@@ -1276,7 +1291,10 @@ class MuonNuclearInteraction(object):
         float
             gamma_mu ^2 DeltaG ^2. See above.
         """
-        # the muon must be first, at position 0
+
+        if atoms:
+            self.atoms = atoms
+
         plank2pi = 1.0545718E-34 #joule second
         mu_0 = 0.0000012566371 # (kilogram meter) ∕ (ampere^2 × second^2)
         r = 0.
@@ -1286,6 +1304,9 @@ class MuonNuclearInteraction(object):
             if atom['Label'] == 'mu':
                 gamma_mu = atom['Gamma']
                 pos_mu   = atom['Position']
+                break
+        else:
+            self.logger.warning('Multiple muons?! Only using last one in list')
 
 
         for atom in self.atoms:
