@@ -6,6 +6,7 @@ import numpy as np
 from numpy import pi
 from mendeleev import element
 from copy import deepcopy
+from fractions import Fraction
 
 qdot = lambda x,y : x[0]*y[0] + x[1]*y[1] + x[2]*y[2]
 qMdotV = lambda x,y : (x[0,0]*y[0] + x[0,1]*y[1] + x[0,2]*y[2],
@@ -313,17 +314,22 @@ class MuonNuclearInteraction(object):
                     self.logger.log(level, 'Using most abundand isotope for {}, i.e. {}{}, {} abundance'.format(label, isotope.mass_number, e.symbol, max_ab))
 
                 # check if overriding spin
+                mendeelev_spin = float(Fraction(isotope.spin))
                 if spin:
-                    if spin != isotope.spin:
+                    if spin != mendeelev_spin:
                         self.logger.warning("Warning, overriding spin for {}".format(label))
                 else:
-                    atoms[i]['Spin'] = isotope.spin
+                    atoms[i]['Spin'] = mendeelev_spin
 
                 # check if overriding gamma
                 if gamma:
                     self.logger.warning("Warning, overriding gamma for {}".format(label))
                 else:
-                    atoms[i]['Gamma'] = isotope.g_factor * 7.622593285e6 * 2. * pi  #  \mu_N /h, is 7.622593285(47) MHz/T that in turn is equal to  γ_n / (2 π g_n)
+                    if isotope.g_factor:
+                        atoms[i]['Gamma'] = isotope.g_factor * 7.622593285e6 * 2. * pi  #  \mu_N /h, is 7.622593285(47) MHz/T that in turn is equal to  γ_n / (2 π g_n)
+                    else:
+                        self.logger.error("g_factor missing in mendeleev library, you need to specify it by hand")
+                        raise RuntimeError("Missing gammma.")
 
                 if quadrupole_moment:
                     self.logger.warning("Warning, overriding quadrupole moment for {}".format(label))
