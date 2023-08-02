@@ -409,7 +409,7 @@ class MuonNuclearInteraction(object):
             rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
             return rotation_matrix
 
-        bring_this_to_z = np.array(bring_this_to_z, dtype=np.float)
+        bring_this_to_z = np.array(bring_this_to_z, dtype=np.float_)
         bring_this_to_z /= np.linalg.norm(bring_this_to_z)
 
         if np.allclose(bring_this_to_z, np.array([0,0,1.])):
@@ -565,7 +565,7 @@ class MuonNuclearInteraction(object):
 
         dU = (-1j * self.H * one_over_plank2pi_neVs * dt).expm()
 
-        r = np.zeros(steps, dtype=np.complex)
+        r = np.zeros(steps, dtype=np.complex_)
         U = qeye(dU.dims) # this is t=0
         for i in range(steps):
             r[i] += ( rhoz * U.dag() * Oz * U ).tr()
@@ -692,7 +692,7 @@ class MuonNuclearInteraction(object):
             return Us
 
 
-        r = np.zeros_like(tlist, dtype=np.complex)
+        r = np.zeros_like(tlist, dtype=np.complex_)
 
         # observe along direction
         direction /= np.linalg.norm(direction)
@@ -762,7 +762,7 @@ class MuonNuclearInteraction(object):
         try:
             from fast_quantum import evolve, measure
         except ImportError:
-            # python version, should never me used
+            # python version, should never be used
             self.logger.log(logging.WARNING, "W"+'AaA'*7+"RNING: using slow python version!!!!")
             def measure(o,psi):
                 r = 0.
@@ -857,7 +857,7 @@ class MuonNuclearInteraction(object):
         #
         # Notes for future myself.
         #
-        # Here's the deal: muon the muon must always be the last particle
+        # Here's the deal: the muon must always be the last particle
         # in the Hilbert space. This allows to work with evolution operators
         # and observables that are block diagonal, i.e. something like
         #
@@ -905,7 +905,7 @@ class MuonNuclearInteraction(object):
             return Us
 
 
-        r = np.zeros_like(tlist, dtype=np.complex)
+        r = np.zeros_like(tlist, dtype=np.complex_)
 
         # observe along direction
         direction /= np.linalg.norm(direction)
@@ -1072,7 +1072,7 @@ class MuonNuclearInteraction(object):
 
         ekets = self.ekets
 
-        AA = np.zeros([len(ekets),len(ekets)], dtype=np.complex)
+        AA = np.zeros([len(ekets),len(ekets)], dtype=np.complex_)
 
         if direction == [0,0,1]:
             O = Oz
@@ -1111,11 +1111,11 @@ class MuonNuclearInteraction(object):
                 Ox, Oy, Oz = atom['Observables']
 
         self.logger.info('Storing kets in dense matrices')
-        allkets = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.complex))
+        allkets = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.complex_))
         for idx in range(len(ekets)):
             allkets[:,idx] = ekets[idx].data.toarray()[:,0].reshape((len(ekets),1))
 
-        w = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.float))
+        w = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.float_))
 
         if direction == [0,0,1]:
             O = Oz
@@ -1205,7 +1205,7 @@ class MuonNuclearInteraction(object):
         numpy.array
             Muon polarization function along z.
         """
-        signal = np.zeros_like(tlist, dtype=np.complex)
+        signal = np.zeros_like(tlist, dtype=np.complex_)
 
         evals = self.evals
 
@@ -1254,7 +1254,7 @@ class MuonNuclearInteraction(object):
         weps *= factor
         tmax = np.max(tlist)
 
-        signal = np.zeros_like(tlist, dtype=np.complex)
+        signal = np.zeros_like(tlist, dtype=np.complex_)
 
         # makes the difference of all eigenvalues
         ediffs  = np.subtract.outer(evals, evals)
