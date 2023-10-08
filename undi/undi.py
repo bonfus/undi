@@ -8,6 +8,21 @@ from mendeleev import element
 from copy import deepcopy
 from fractions import Fraction
 
+
+# No MPI by default
+mpi_comm = None
+mpi_rank = 0
+mpi_size = 1
+
+try:
+    from mpi4py import MPI
+    mpi_comm = MPI.COMM_WORLD
+    mpi_rank = mpi_comm.Get_rank()
+    mpi_size = mpi_comm.Get_size()
+except ImportError:
+    print("MPI not available")
+
+
 qdot = lambda x,y : x[0]*y[0] + x[1]*y[1] + x[2]*y[2]
 qMdotV = lambda x,y : (x[0,0]*y[0] + x[0,1]*y[1] + x[0,2]*y[2],
                         x[1,0]*y[0] + x[1,1]*y[1] + x[1,2]*y[2],
@@ -103,6 +118,7 @@ class MuonNuclearInteraction(object):
         """
         l = a_i['Spin']
 
+        # no quadrupolar interaction for spin 1/2
         if (l < 0.5001):
             raise RuntimeError("Ivalid spin")
 
@@ -739,7 +755,7 @@ class MuonNuclearInteraction(object):
 
         return np.real_if_close(r)
 
-    def celio_on_steroids(self, tlist, k=4, direction=[0,0,1.], single_precision=False, progress=True):
+    def celio_on_steroids(self, tlist, k=4, direction=[0,0,1.], single_precision=False, progress=True, batch_size=64):
         """This reimplements celio with C++.
 
         Parameters
@@ -754,13 +770,19 @@ class MuonNuclearInteraction(object):
             use single precision algorithms (float32). Reduces memory footprint.
         progress: bool
             shows a progress bar (requires tqdm)
+        batch_size: int
+            dimension of the vector holding OP * psi products (used to speedup MPI communications).
         Returns
         -------
         numpy.array
             Muon polarization function along z.
         """
         try:
-            from fast_quantum import evolve, measure
+            if mpi_comm is None:
+                from fast_quantum import evolve, measure
+            else:
+                from fast_quantum_mpi import evolve_mpi, measure_mpi
+
         except ImportError:
             # python version, should never be used
             self.logger.log(logging.WARNING, "W"+'AaA'*7+"RNING: using slow python version!!!!")
@@ -929,7 +951,12 @@ class MuonNuclearInteraction(object):
         # Full initial state, nuclei and muon (at the end!!)
         dims=SubspacesInfo['NucHdim'] + [2]
 
-        psid = np.kron( np.exp(2.j * np.pi * uniform01(HdimHalf).astype(ftype)) , # Initial (random) state for all nuclei
+        # Check mpi splitting ( total dimension is HdimHalf*2, max OP dimension is max(dims)*2,
+        # divide them and the 2 goes away.
+        if ( HdimHalf % mpi_size != 0): raise RuntimeError("Invalid number of MPI processes.")
+        if not (mpi_comm is None) and ( HdimHalf/max(dims) < batch_size): raise ValueError("Invalid batching size.")
+
+        psid = np.kron( np.exp(2.j * np.pi * uniform01(HdimHalf//mpi_size).astype(ftype)) , # Initial (random) state for all nuclei
                         np.array(mu_psi.data.todense()).flatten().astype(ctype)) # And muon
 
 
@@ -959,8 +986,10 @@ class MuonNuclearInteraction(object):
         idxswap = [None,] * len(dUs)
         for i, t in enumerate(tqdm(tlist)):
             # measure
-            #mtime = time.perf_counter()
-            r[i] = measure(o, psid)
+            if mpi_comm is None:
+                r[i] = measure(o, psid)
+            else:
+                r[i] = measure_mpi(o, psid, mpi_comm)
 
             # safety check (for 99% of users)
             if ((i == 0) and (abs(r[0] - 1.0)>1e-7)): self.logger.log(logging.WARNING, "Initial polarization {}?!".format(r[0]))
@@ -968,10 +997,15 @@ class MuonNuclearInteraction(object):
             # Evolve psi
             for _ in range(k):
                 for ui, dU in enumerate(dUs):
-                    if idxswap[ui] is None:
+
+                    if (idxswap[ui] is None) and (mpi_comm is None):
                         idxswap[ui] = setsecondlast(dims, ui)
+
                     # compute psi evolution for nucleus ui
-                    evolve(dU, psid, idxswap[ui])
+                    if mpi_comm is None:
+                        evolve(dU, psid, idxswap[ui])
+                    else:
+                        evolve_mpi(dU, psid, dims, ui, mpi_comm, batch_size)
 
         return np.real_if_close(r)
 
@@ -1113,7 +1147,7 @@ class MuonNuclearInteraction(object):
         self.logger.info('Storing kets in dense matrices')
         allkets = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.complex_))
         for idx in range(len(ekets)):
-            allkets[:,idx] = ekets[idx].data.to_array()[:,0].reshape((len(ekets),1))
+            allkets[:,idx] = ekets[idx].data.toarray()[:,0].reshape((len(ekets),1))
 
         w = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.float_))
 
@@ -1126,7 +1160,7 @@ class MuonNuclearInteraction(object):
         else:
             raise NotImplemented
 
-        w = np.square( np.abs( allkets.conjugate().T*O.data.to_array()*allkets ) ) # AAx = allkets.T*Ox.data.to_array()*allkets
+        w = np.square( np.abs( allkets.conjugate().T*O.data.toarray()*allkets ) ) # AAx = allkets.T*Ox.data.toarray()*allkets
 
         #
         # This is what is done above...

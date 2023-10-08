@@ -1,6 +1,7 @@
 from setuptools import setup
 import os
 
+# Pybind11
 try:
     from pybind11.setup_helpers import build_ext, Pybind11Extension
     ext_modules = [
@@ -13,8 +14,27 @@ try:
     ]
 
 except ImportError:
+    print("No Pybind11 => This is no good!")
     ext_modules = []
     build_ext = None
+
+# MPI
+if not (build_ext is None):
+    try:
+        import mpi4py as m;
+        print("Using MPI: " + m.__version__); print("MPI include: " + m.get_include());
+
+        ext_modules += [
+            Pybind11Extension(
+                "fast_quantum_mpi",
+                ["undi/fast_mpi.cpp"],
+                extra_compile_args='-fopenmp'.split(),
+                extra_link_args='-fopenmp'.split(),
+                include_dirs=[m.get_include()]
+            ),
+        ]
+    except ImportError:
+        print("No MPI detected")
 
 
 def readme():

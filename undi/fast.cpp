@@ -11,8 +11,6 @@ using namespace std;
  *
  */
 
-
-
 template <typename T>
 double measure(py::array_t<std::complex<T>, py::array::c_style> op, py::array_t<std::complex<T>, py::array::c_style> psi) {
     py::buffer_info op_buf = op.request(), psi_buf = psi.request();
