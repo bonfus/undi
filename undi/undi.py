@@ -347,10 +347,11 @@ class MuonNuclearInteraction(object):
                         self.logger.error("g_factor missing in mendeleev library, you need to specify it by hand")
                         raise RuntimeError("Missing gammma.")
 
-                if quadrupole_moment:
-                    self.logger.warning("Warning, overriding quadrupole moment for {}".format(label))
-                else:
+                if quadrupole_moment is None:
                     atoms[i]['ElectricQuadrupoleMoment'] = isotope.quadrupole_moment * 1e-28 # m^2
+                else:
+                    atoms[i]['ElectricQuadrupoleMoment'] = quadrupole_moment
+                    self.logger.warning("Warning, overriding quadrupole moment for {}".format(label))
 
             # increase Hilbert space dimension
             self.Hdim *= (2*atoms[i]['Spin']+1)
