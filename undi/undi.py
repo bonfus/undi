@@ -335,6 +335,8 @@ class MuonNuclearInteraction(object):
                     if spin != mendeelev_spin:
                         self.logger.warning("Warning, overriding spin for {}".format(label))
                 else:
+                    if mendeelev_spin == 0:
+                        raise RuntimeError("Isotope with " + str(isotope) + " with spin 0 not allowed. Specify a different isotope or remove this nucleus.")
                     atoms[i]['Spin'] = mendeelev_spin
 
                 # check if overriding gamma
@@ -1148,7 +1150,7 @@ class MuonNuclearInteraction(object):
         self.logger.info('Storing kets in dense matrices')
         allkets = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.complex_))
         for idx in range(len(ekets)):
-            allkets[:,idx] = ekets[idx].data.toarray()[:,0].reshape((len(ekets),1))
+            allkets[:,idx] = ekets[idx].data.to_array()[:,0].reshape((len(ekets),1))
 
         w = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.float_))
 
@@ -1161,7 +1163,7 @@ class MuonNuclearInteraction(object):
         else:
             raise NotImplemented
 
-        w = np.square( np.abs( allkets.conjugate().T*O.data.toarray()*allkets ) ) # AAx = allkets.T*Ox.data.toarray()*allkets
+        w = np.square( np.abs( allkets.conjugate().T*O.data.to_array()*allkets ) ) # AAx = allkets.T*Ox.data.to_array()*allkets
 
         #
         # This is what is done above...
