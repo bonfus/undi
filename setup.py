@@ -1,5 +1,15 @@
 from setuptools import setup
 import os
+from glob import glob
+
+use_blas = False
+
+MKL_L = os.getenv("MKL_LIB", "-L/opt/intel/oneapi/mkl/latest/lib/intel64")
+# For GNU:
+MKL_L += " -lmkl_gf_lp64  -lmkl_gnu_thread -lmkl_core -D__MKL"
+# For Intel:
+# MKL_L += " -lmkl_intel_lp64  -lmkl_intel_thread -lmkl_core -D__MKL"
+MKL_I = os.getenv("MKL_INCLUDE", "/opt/intel/oneapi/mkl/latest/include/")
 
 # Pybind11
 try:
@@ -7,39 +17,36 @@ try:
     ext_modules = [
         Pybind11Extension(
             "fast_quantum",
-            ["undi/fast.cpp"],
-            extra_compile_args='-fopenmp'.split(),
-            extra_link_args='-fopenmp'.split(),
+            ["undi/fast/permutations.cpp", "undi/fast/fast.cpp"],
+            extra_compile_args='-O3 -fopenmp -ffast-math -g'.split(),
+            extra_link_args='-O3 -fopenmp -ffast-math -g'.split(),
+        ),
+        Pybind11Extension(
+            "fast_quantum_light",
+            ["undi/fast/permutations.cpp", "undi/fast/fast_light.cpp"],
+            extra_compile_args='-O3 -fopenmp -ffast-math -g'.split(),
+            extra_link_args='-O3 -fopenmp -ffast-math -g'.split(),
         ),
     ]
+
+    if use_blas:
+        ext_modules += \
+        [
+            Pybind11Extension(
+                "fast_quantum_blas",
+                ["undi/permutations.cpp", "undi/fast/fast_blas.cpp"],
+                extra_compile_args='-O3 -fopenmp -ffast-math -g'.split(),
+                extra_link_args='-O3 -fopenmp -ffast-math -g'.split() + MKL_L.split(),
+                include_dirs=[MKL_I]
+            ),
+        ]
+    
 
 except ImportError:
     print("No Pybind11 => This is no good!")
     ext_modules = []
     build_ext = None
 
-# MPI
-if not (build_ext is None):
-    try:
-        import mpi4py as m;
-        print("Using MPI: " + m.__version__); print("MPI include: " + m.get_include());
-
-        ext_modules += [
-            Pybind11Extension(
-                "fast_quantum_mpi",
-                ["undi/fast_mpi.cpp"],
-                extra_compile_args='-fopenmp'.split(),
-                extra_link_args='-fopenmp'.split(),
-                include_dirs=[m.get_include()]
-            ),
-        ]
-    except ImportError:
-        print("No MPI detected")
-
-
-def readme():
-    with open('README.rst') as f:
-        return f.read()
 
 setup(name='undi',
       version='1.1',
@@ -55,12 +62,11 @@ setup(name='undi',
       author='Pietro Bonfa',
       author_email='bonfus@gmail.com',
       license='GPLv3',
-      packages=['undi'],
+      packages=['undi', 'undi.fast'],
       include_package_data=True,
       install_requires = [
                           'numpy',
-                          'qutip',
-                          'mendeleev'
+                          'qutip'
                           ],
       extras_require = {
         'Fast C++ implementation':  ["pybind11"],
@@ -68,5 +74,6 @@ setup(name='undi',
       },
       zip_safe=False,
       ext_modules=ext_modules,
+      headers=glob('undi/fast/*.hpp') if ext_modules else None,
       cmdclass={"build_ext": build_ext}
     )

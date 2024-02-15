@@ -1,1 +1,4 @@
 include README.rst
+include undi/fast/handler.hpp
+include undi/fast/mpi_wrap.hpp
+include undi/fast/permutations.hpp
