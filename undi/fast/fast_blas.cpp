@@ -39,6 +39,10 @@ void initialize(py::array_t<size_t, py::array::c_style> dims, Handler &h) {
     // compute Hilbert space dimension
     size_t hdim = hilbert_space_dims(nspins, dims_ptr);
 
+    // save info to handler
+    h.h_dim = hdim;
+    h.nspins = nspins;
+
     // mem footprint can be smaller!
     size_t *idx_ptr = new size_t[hdim * nspins];
     size_t *inv_idx_ptr = new size_t[hdim * nspins];

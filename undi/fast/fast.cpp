@@ -27,7 +27,11 @@ void initialize(py::array_t<size_t, py::array::c_style> dims, Handler &h) {
 
     // use fiill as usual
     size_t hdim = hilbert_space_dims(nspins, dims_ptr);
+
+    // save info to handler
     h.h_dim = hdim;
+    h.nspins = nspins;
+
     h.rotations = new size_t[hdim * (nspins - 1)];
 
     for (size_t i=0; i<nspins-1; i++)
