@@ -43,7 +43,7 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
         symb = str( isotopes.get(atom_symbol) ) + atom_symbol
 
         # increase Hilbert space
-        hdim *= isotope_spin
+        hdim *= (2*isotope_spin+1)
 
         if hdim > hdim_max:
             break
