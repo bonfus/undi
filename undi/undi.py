@@ -818,9 +818,9 @@ class MuonNuclearInteraction(object):
             if progress:
                 from tqdm import tqdm
             else:
-                tdqm = lambda x: x
+                tqdm = lambda x: x
         except ImportError:
-            tdqm = lambda x: x
+            tqdm = lambda x: x
 
         # Import fast random number generator (possibly)
         try:
