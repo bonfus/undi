@@ -420,7 +420,7 @@ class MuonNuclearInteraction(object):
             rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
             return rotation_matrix
 
-        bring_this_to_z = np.array(bring_this_to_z, dtype=np.float_)
+        bring_this_to_z = np.array(bring_this_to_z, dtype=np.float64)
         bring_this_to_z /= np.linalg.norm(bring_this_to_z)
 
         if np.allclose(bring_this_to_z, np.array([0,0,1.])):
@@ -481,7 +481,7 @@ class MuonNuclearInteraction(object):
         dims = self.create_hilbert_space(atoms)
 
         # Empty Hamiltonian
-        H = Qobj(dims=dims)
+        H = Qobj(np.zeros(np.prod(dims,axis=1)),dims=dims)
 
         # Find the muon, used later...
         mu = None
@@ -576,7 +576,7 @@ class MuonNuclearInteraction(object):
 
         dU = (-1j * self.H * one_over_plank2pi_neVs * dt).expm()
 
-        r = np.zeros(steps, dtype=np.complex_)
+        r = np.zeros(steps, dtype=np.complex128)
         U = qeye(dU.dims) # this is t=0
         for i in range(steps):
             r[i] += ( rhoz * U.dag() * Oz * U ).tr()
@@ -703,7 +703,7 @@ class MuonNuclearInteraction(object):
             return Us
 
 
-        r = np.zeros_like(tlist, dtype=np.complex_)
+        r = np.zeros_like(tlist, dtype=np.complex128)
 
         # observe along direction
         direction /= np.linalg.norm(direction)
@@ -732,7 +732,7 @@ class MuonNuclearInteraction(object):
 
         # Full initial state, muon and nuclei
         dims=[SubspacesInfo['NucHdim'], [1,]*len(SubspacesInfo['NucHdim'])]
-        psi = tensor(mu_psi, Qobj( psi0, dims=dims, type='ket' ))
+        psi = tensor(mu_psi, Qobj( psi0, dims=dims ))
 
         # Normalize
         Normalization = 1./np.sqrt(HdimHalf)
@@ -742,7 +742,7 @@ class MuonNuclearInteraction(object):
 
         for i, t in enumerate(tlist):
             # measure
-            r[i] = (psi.dag() * O * psi)[0,0]
+            r[i] = (psi.dag() * O * psi)
             # Evolve psi
             for _ in range(k):
                 for dU in dUs:
@@ -750,7 +750,7 @@ class MuonNuclearInteraction(object):
 
         return np.real_if_close(r)
 
-    def celio_on_steroids(self, tlist, k=4, direction=[0,0,1.], single_precision=False, progress=True, algorithm='thin'):
+    def celio_on_steroids(self, tlist, k=4, direction=[0,0,1.], single_precision=False, progress=True, algorithm='light'):
         """This reimplements celio with C++.
 
         Parameters
@@ -939,11 +939,11 @@ class MuonNuclearInteraction(object):
                 # evolution operator on the small matrix
                 uu = (-1j * hh * one_over_plank2pi_neVs * tt / k).expm()
 
-                Us.append( uu.data.todense().astype(ctype, order='C') )
+                Us.append( uu.data.to_array().astype(ctype, order='C') )
             return Us
 
 
-        r = np.zeros_like(tlist, dtype=np.complex_)
+        r = np.zeros_like(tlist, dtype=np.complex128)
 
         # observe along direction
         direction /= np.linalg.norm(direction)
@@ -951,7 +951,7 @@ class MuonNuclearInteraction(object):
             self.logger.log(logging.WARNING, "Polarization different from z not yet fully implemented (but it's easy to implement)")
             o = qdot((sigmax(), sigmay(), sigmaz()), direction ).data.todense().astype(ctype, order='C')
         else:
-            o = sigmaz().data.todense().astype(ctype, order='C')
+            o = sigmaz().data.to_array().astype(ctype, order='C')
 
 
         # Insert muon polarized along positive quantization direction
@@ -968,7 +968,7 @@ class MuonNuclearInteraction(object):
         dims=SubspacesInfo['NucHdim'] + [2]
 
         psid = np.kron( np.exp(2.j * np.pi * uniform01(HdimHalf).astype(ftype, order='C',copy=False)) , # Initial (random) state for all nuclei
-                        np.array(mu_psi.data.todense()).flatten().astype(ctype, order='C',copy=False)) # And muon
+                        np.array(mu_psi.data.to_array()).flatten().astype(ctype, order='C',copy=False)) # And muon
 
 
         self.logger.info("Size of wavefunction: {} MB".format( psid.nbytes/1024/1024 ) )
@@ -1104,14 +1104,14 @@ class MuonNuclearInteraction(object):
                 # evolution operator on the small matrix
                 uu = (-1j * hh * one_over_plank2pi_neVs * tt / k).expm()
 
-                Us.append( uu.data.todense() )
+                Us.append( uu.data.to_array() )
             return Us
 
         # observe along direction
         direction /= np.linalg.norm(direction)
         if not np.allclose(direction,[0,0,1]):
             self.logger.log(logging.WARNING, "Polarization different from z not yet fully implemented (but it's easy to implement)")
-            o = qdot((sigmax(), sigmay(), sigmaz()), direction ).data.todense()
+            o = qdot((sigmax(), sigmay(), sigmaz()), direction ).data.to_array()
         else:
             o = sigmaz().data.todense()
 
@@ -1246,7 +1246,7 @@ class MuonNuclearInteraction(object):
 
         ekets = self.ekets
 
-        AA = np.zeros([len(ekets),len(ekets)], dtype=np.complex_)
+        AA = np.zeros([len(ekets),len(ekets)], dtype=np.complex128)
 
         if direction == [0,0,1]:
             O = Oz
@@ -1285,11 +1285,11 @@ class MuonNuclearInteraction(object):
                 Ox, Oy, Oz = atom['Observables']
 
         self.logger.info('Storing kets in dense matrices')
-        allkets = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.complex_))
+        allkets = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.complex128))
         for idx in range(len(ekets)):
-            allkets[:,idx] = ekets[idx].data.toarray()[:,0].reshape((len(ekets),1))
+            allkets[:,idx] = ekets[idx].data.to_array()[:,0].reshape((len(ekets),1))
 
-        w = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.float_))
+        w = np.matrix(np.zeros((len(ekets),len(ekets)), dtype=np.float64))
 
         if direction == [0,0,1]:
             O = Oz
@@ -1300,7 +1300,7 @@ class MuonNuclearInteraction(object):
         else:
             raise NotImplemented
 
-        w = np.square( np.abs( allkets.conjugate().T*O.data.toarray()*allkets ) ) # AAx = allkets.T*Ox.data.to_array()*allkets
+        w = np.square( np.abs( allkets.conjugate().T*O.data.to_array()*allkets ) ) # AAx = allkets.T*Ox.data.to_array()*allkets
 
         #
         # This is what is done above...
@@ -1379,7 +1379,7 @@ class MuonNuclearInteraction(object):
         numpy.array
             Muon polarization function along z.
         """
-        signal = np.zeros_like(tlist, dtype=np.complex_)
+        signal = np.zeros_like(tlist, dtype=np.complex128)
 
         evals = self.evals
 
@@ -1428,7 +1428,7 @@ class MuonNuclearInteraction(object):
         weps *= factor
         tmax = np.max(tlist)
 
-        signal = np.zeros_like(tlist, dtype=np.complex_)
+        signal = np.zeros_like(tlist, dtype=np.complex128)
 
         # makes the difference of all eigenvalues
         ediffs  = np.subtract.outer(evals, evals)
