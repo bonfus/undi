@@ -31,31 +31,37 @@ atoms = [
 
     {'Position': np.array([0.0    ,    0.5   ,     0.5])*angtom*a,
      'Label': '63Cu',
+     'Gamma': 7.0974e7,
      'ElectricQuadrupoleMoment': Cu_Quadrupole_moment # 'OmegaQmu': 3.2e6 # s^-1
     },
     
     {'Position': np.array([0.5    ,    0.0   ,     0.5])*angtom*a,
      'Label': '63Cu',
+     'Gamma': 7.0974e7,
      'ElectricQuadrupoleMoment': Cu_Quadrupole_moment, # 'OmegaQmu': 3.2e6 # s^-1
     },
     
     {'Position': np.array([1.0    ,   0.5   ,     0.5])*angtom*a,
      'Label': '63Cu',
+     'Gamma': 7.0974e7,
      'ElectricQuadrupoleMoment': Cu_Quadrupole_moment, # 'OmegaQmu': 3.2e6 # s^-1
     },
     
     {'Position': np.array([0.5    ,    1.0   ,     0.5])*angtom*a,
      'Label': '63Cu',
+     'Gamma': 7.0974e7,
      'ElectricQuadrupoleMoment': Cu_Quadrupole_moment, # 'OmegaQmu': 3.2e6 # s^-1
     },
     
     {'Position': np.array([0.5    ,    0.5   ,     0.0])*angtom*a,
     'Label': '63Cu',
+     'Gamma': 7.0974e7,
     'ElectricQuadrupoleMoment': Cu_Quadrupole_moment, # 'OmegaQmu': 3.2e6 # s^-1
     },
     
     {'Position': np.array([0.5    ,    0.5   ,     1.0])*angtom*a,
      'Label': '63Cu',
+     'Gamma': 7.0974e7,
      'ElectricQuadrupoleMoment': Cu_Quadrupole_moment, # 'OmegaQmu': 3.2e6 # s^-1
     }
 ]
@@ -119,7 +125,7 @@ for idx, atom in enumerate(atoms):
 
 steps = 200
 tlist = np.linspace(0, 16e-6, steps)
-signals = np.zeros([6,steps], dtype=np.float)
+signals = np.zeros([6,steps], dtype=np.float64)
 
 
 
@@ -138,10 +144,10 @@ for idx, Bmod in enumerate(LongitudinalFields):
     NS.translate_rotate_sample_vec(np.array([1.,1.,1.]))
 
     print("Computing signal 4 times with LF {} T...".format(Bmod), end='', flush=True)
-    signal_Cu = NS.celio(tlist,  k=2)
+    signal_Cu = NS.celio_on_steroids(tlist,  k=2)
     for i in range(3):
         print('{}...'.format(i+1), end='', flush=True)
-        signal_Cu += NS.celio(tlist, k=2)
+        signal_Cu += NS.celio_on_steroids(tlist, k=2)
     print('done!')
     signal_Cu /= float(i+1+1)
     del NS
@@ -175,7 +181,7 @@ plt.show()
 RUN_EXACT_SOLUTION = False
 steps = 50
 exact_tlist = np.linspace(0, 16e-6, steps)
-#exact_signals = np.zeros([6,steps], dtype=np.float)
+#exact_signals = np.zeros([6,steps], dtype=np.float64)
 # Time Interval between 0 and 16 us, 50 steps, LongitudinalFields = (0.0, 0.001, 0.003, 0.007, 0.008, 0.01)
 exact_signals = np.array([[ 1.        ,  0.98282653,  0.93964818,  0.8727281 ,  0.78028361,
          0.67469059,  0.56109296,  0.44254458,  0.33016254,  0.22835089,
