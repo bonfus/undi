@@ -125,7 +125,7 @@ B_dir = np.array([1.,0.,0.])
 if COMPUTE:
     print("Computing signal for positive EFGs...", end='', flush=True)
 
-    signal = np.zeros((fields, axis, steps))
+    signal = np.zeros((fields, 3, steps))
 
     for i in range(fields):
         #| Align the magnetic fields along x.
@@ -160,6 +160,18 @@ else:
     signal = data.get('signal')
 
 #| ## Real space analysis
+#|
+#| In a μSR-experiment data are collected from a large number of decaying muons,
+#| each sitting in a different field determined by the local arrangement of its surrounding
+#| nuclear moments. The distribution of these local fields is Gaussian, with average
+#| value zero and the width determined by the spread $\langle \DeltaB^2 _{dip}\rangle$.
+#| If an external field $B_{ext}$ is applied, the average precession frequency
+#|  of the muon system will still be ωB = (gμμN/ℏ)Bext, but the distribution of the fields will give rise to a damping factor of the
+#| of the form exp(−σ2t2) with σ = (1/√2)(gμμN/ℏ)√⟨ΔB2dip⟩. This form of damping
+#| is called Gaussian.
+#| The magnitude of the damping factor σ depends on the spins of the nuclei (I),
+#| the strength of the nuclear dipoles μI = gIIμN and on the position (distance ri and
+#| angle θi with respect to the applied magnetic field Bext) of the surrounding nuclei
 
 bhar = np.empty((fields, 3))
 
