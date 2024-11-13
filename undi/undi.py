@@ -5,7 +5,7 @@ from qutip import *
 import numpy as np
 from numpy import pi
 try:
-    from mendeleev import element
+    from mendeleev import element # to remove
 except ImportError:
     # this will become default but will also possibly
     # change the results (quadrupole values and gammas may change sligtly)
@@ -632,7 +632,7 @@ class MuonNuclearInteraction(object):
         for l, atom in enumerate(atoms):
             if l == mu_idx:
                 continue
-
+            
             couple = [atoms[mu_idx].copy(),  atoms[l].copy()]
 
             dims = self.create_hilbert_space(couple)
@@ -732,17 +732,17 @@ class MuonNuclearInteraction(object):
 
         # Full initial state, muon and nuclei
         dims=[SubspacesInfo['NucHdim'], [1,]*len(SubspacesInfo['NucHdim'])]
-        psi = tensor(mu_psi, Qobj( psi0, dims=dims ))
+        # MB
+        psi = tensor(mu_psi, Qobj( psi0, dims=dims)) #, type='ket' ))
 
         # Normalize
         Normalization = 1./np.sqrt(HdimHalf)
         psi = psi * Normalization
-
         dUs = computeU(tlist[1]-tlist[0], k)
-
         for i, t in enumerate(tlist):
             # measure
-            r[i] = (psi.dag() * O * psi)
+            # MB
+            r[i] = (psi.dag() * O * psi) #[0,0]
             # Evolve psi
             for _ in range(k):
                 for dU in dUs:

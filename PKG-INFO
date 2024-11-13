@@ -1,0 +1,34 @@
+Metadata-Version: 2.1
+Name: undi
+Version: 1.1
+Summary: Muon-Nuclear Dipolar Interaction
+Home-page: http://github.com/bonfus/undi
+Author: Pietro Bonfa
+Author-email: bonfus@gmail.com
+License: GPLv3
+Keywords: muSR spin nuclear
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Operating System :: OS Independent
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Physics
+License-File: LICENSE
+Requires-Dist: numpy
+Requires-Dist: qutip
+Provides-Extra: fast-c-implementation
+Requires-Dist: pybind11; extra == "fast-c-implementation"
+Provides-Extra: progress-bar
+Requires-Dist: tqdm; extra == "progress-bar"
+
+UNDI
+----
+
+mUon Nuclear Dipolar Interaction (UNDI) is a small python library to
+compute the time dependence of the spin polarization of a muon 
+interacting with a number of neighboring nuclei in a solid.
+
+The presence of electric field gradients on the nuclei of the hosting
+material and externally applied fields can be easily introduced.
+
+The code is documented at https://undi.readthedocs.io and in the 
+`associated pubblication <https://doi.org/10.1016/j.cpc.2020.107719>`_.

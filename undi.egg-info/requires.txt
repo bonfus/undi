@@ -1,0 +1,8 @@
+numpy
+qutip
+
+[Fast C++ implementation]
+pybind11
+
+[Progress bar]
+tqdm

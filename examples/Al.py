@@ -88,7 +88,7 @@ for i, B in enumerate(LongitudinalFields):
 
     NS_positive = MuonNuclearInteraction(atoms, external_field=B_pos, log_level='warn')
 
-    signal_positive_EFG[i] = NS_positive.celio(tlist,  k=3)
+    signal_positive_EFG[i] = NS_positive.celio_on_steroids(tlist,  k=3, single_precision=True)
 
     del NS_positive
 
@@ -107,7 +107,7 @@ for i, a in enumerate(atoms):
 
 NS_negative = MuonNuclearInteraction(atoms, external_field=B_neg, log_level='warn')
 
-signal_negative_EFG = NS_negative.celio(tlist,  k=3)
+signal_negative_EFG = NS_negative.celio_on_steroids(tlist,  k=3, single_precision=True)
 
 del NS_negative
 
