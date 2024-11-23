@@ -59,7 +59,7 @@ def main():
     - --algorithm (str, optional): Algorithm to be used for the analysis. Default is "fast".
     - --dump (bool, optional): Flag to dump the results. Default is False.
     Returns:
-    None
+    - results (dict): Dictionary with the results of the UNDI analysis.
     """
 
     parser = argparse.ArgumentParser()
