@@ -732,8 +732,8 @@ class MuonNuclearInteraction(object):
 
         # Full initial state, muon and nuclei
         dims=[SubspacesInfo['NucHdim'], [1,]*len(SubspacesInfo['NucHdim'])]
-        # MB
-        psi = tensor(mu_psi, Qobj( psi0, dims=dims)) #, type='ket' ))
+
+        psi = tensor(mu_psi, Qobj( psi0, dims=dims))
 
         # Normalize
         Normalization = 1./np.sqrt(HdimHalf)
@@ -741,8 +741,7 @@ class MuonNuclearInteraction(object):
         dUs = computeU(tlist[1]-tlist[0], k)
         for i, t in enumerate(tlist):
             # measure
-            # MB
-            r[i] = (psi.dag() * O * psi) #[0,0]
+            r[i] = (psi.dag() * O * psi)
             # Evolve psi
             for _ in range(k):
                 for dU in dUs:
