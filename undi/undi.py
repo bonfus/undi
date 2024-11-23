@@ -732,7 +732,7 @@ class MuonNuclearInteraction(object):
 
         # Full initial state, muon and nuclei
         dims=[SubspacesInfo['NucHdim'], [1,]*len(SubspacesInfo['NucHdim'])]
-        psi = tensor(mu_psi, Qobj( psi0, dims=dims))
+        psi = tensor(mu_psi, Qobj( psi0, dims=dims ))
 
         # Normalize
         Normalization = 1./np.sqrt(HdimHalf)
