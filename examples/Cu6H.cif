@@ -1,0 +1,18 @@
+data_image0
+_chemical_formula_structural       Cu6
+_chemical_formula_sum              "Cu6"
+loop_
+_atom_site_type_symbol
+_atom_site_label
+_atom_site_symmetry_multiplicity
+_atom_site_Cartn_x
+_atom_site_Cartn_y
+_atom_site_Cartn_z
+_atom_site_occupancy
+Cu  Cu1       1.0  0.0  1.8106312752  1.8106312752  1.0000
+Cu  Cu2       1.0  1.8106312752  0.0  1.8106312752  1.0000
+Cu  Cu3       1.0  3.6212625504  1.8106312752  1.8106312752  1.0000
+Cu  Cu4       1.0  1.8106312752  3.6212625504  1.8106312752  1.0000
+Cu  Cu5       1.0  1.8106312752  1.8106312752  0.0  1.0000
+Cu  Cu6       1.0  1.8106312752  1.8106312752  3.6212625504  1.0000
+H   H1        1.0  1.8106312752  1.8106312752  1.8106312752  1.0000

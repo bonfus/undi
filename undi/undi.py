@@ -737,9 +737,7 @@ class MuonNuclearInteraction(object):
         # Normalize
         Normalization = 1./np.sqrt(HdimHalf)
         psi = psi * Normalization
-
         dUs = computeU(tlist[1]-tlist[0], k)
-
         for i, t in enumerate(tlist):
             # measure
             r[i] = (psi.dag() * O * psi)
