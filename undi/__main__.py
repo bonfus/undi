@@ -57,6 +57,7 @@ def main():
     - --Bmod (float, optional): Magnetic field modulus. Default is 0.0.
     - --convergence-check (bool, optional): Flag to check for convergence. Default is False.
     - --algorithm (str, optional): Algorithm to be used for the analysis. Default is "fast".
+    - --sample_size_average (int, optional): Number of random samples to for powder average. Default is 1000.
     - --dump (bool, optional): Flag to dump the results. Default is False.
     Returns:
     - results (dict): Dictionary with the results of the UNDI analysis.
@@ -69,6 +70,7 @@ def main():
     parser.add_argument('--Bmod', type=float, default=0., help='Magnetic field modulus. Default is 0.0.')
     parser.add_argument('--convergence-check', type=bool, default=False, help='Flag to check for convergence. Default is False.')
     parser.add_argument('--algorithm', type=str, default="fast", help='Algorithm to be used for the analysis. Default is "fast".')
+    parser.add_argument('--sample_size_average', type=int, default=1000, help='Number of random samples to for powder average. Default is 1000.')
     parser.add_argument('--dump', type=bool, default=True, help='Flag to dump the results. Default is True.')
      
     args = parser.parse_args()

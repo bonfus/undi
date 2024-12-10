@@ -77,6 +77,7 @@ def execute_undi_analysis(
         max_hdim: int = 1000,
         convergence_check: bool = False,
         algorithm: str = 'fast',
+        sample_size_average: int = 1000
     ):
     """
         Execute UNDI (mUon Nuclear Dipolar Interaction) analysis on a given atomic structure.
@@ -87,6 +88,8 @@ def execute_undi_analysis(
         max_hdim (int, optional): The maximum Hilbert space dimension. Default is 1000.
         convergence_check (bool, optional): If True, perform convergence check. Default is False.
         algorithm (str, optional): The algorithm to use for the analysis. Default is 'fast'.
+        sample_size_average (int, optional):  Number of random samples to for powder average. Default is 1000.
+                                            should be 10 for testing.
         Returns:
         list: A list of dictionaries containing the analysis results for each cluster of isotopes.
         Raises:
@@ -162,7 +165,7 @@ def execute_undi_analysis(
         
         if convergence_check:
             # just return the z signal to be analyzed. 
-            
+            print("Doing sample along Z, LF, convergence check")
             for iteration in range(1,6):
                 # we do an average
                 NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
@@ -235,7 +238,7 @@ def execute_undi_analysis(
             powder_signal_lf = (signal_z_lf+signal_y_lf+signal_x_lf)/3
             powder_signal_tf = (signal_z_tf+signal_y_tf+signal_x_tf)/3 
         else:
-            n = int(1000) # should the at least 1e3 ! 10 is for testing.
+            n = sample_size_average # should the at least 1e3 ! 10 is for testing.
             signal_lf = np.zeros_like(t)
             signal_tf = np.zeros_like(t)
 
@@ -246,6 +249,7 @@ def execute_undi_analysis(
                 NS.translate_rotate_sample_vec(direction)
                 signal_lf += NS.celio_on_steroids(t,  k=4, algorithm=algorithm)
                 del NS
+                if i/n in [0.25,0.5,0.75]: print(f"Longitudinal field powder average: {100*i/n}%")
             powder_signal_lf = signal_lf/n 
                 
             for i in range(n):
@@ -255,6 +259,7 @@ def execute_undi_analysis(
                 NS.translate_rotate_sample_vec(direction)
                 signal_tf += NS.celio_on_steroids(t,  k=4, algorithm=algorithm)
                 del NS
+                if i/n in [0.25,0.5,0.75]: print(f"Transverse field powder average: {100*i/n}%")
             powder_signal_tf = signal_tf/n
                     
 
