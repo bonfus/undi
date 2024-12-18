@@ -14,7 +14,7 @@ specified Hilbert space. The isotope average according to natural abundances
 is also performed.
 
 A json file named `results.json` is produced by the code and contains
-both zero-field and longitudinal field results.
+both zero-field, longitudinal and transverse field results.
 
 
 Approximations
@@ -34,7 +34,7 @@ The isotope average is also approximated. For a given cluster, the number
 of possible combinations for the isotopes appearing in the various
 positions and their probability is easily obtained with
 symbolic expansion of a polynomial function.
-For example, when considering the cluster \ce{Rb2Sb7}, the polynomial takes the form
+For example, when considering the cluster Rb2Sb7, the polynomial takes the form
 
 .. math::
    :label: total_isotope_avg
@@ -51,13 +51,28 @@ This is however very time consuming in general.
 
 For this reason, a simpler approximation is considered. Instead of considering distinct atoms
 in the previous formula, only distinct species are taken into account.
-This means that, in each cluster, all atoms appears with the same isotope, as in
+This means that, in each cluster, all atoms appear with the same isotope, as in
 
 .. math::
-   :label: total_isotope_avg
+   :label: isotope_avg_approx
 
     ({}^{85}\text{Rb} + {}^{87}\text{Rb}) \times ({}^{121}\text{Sb} + {}^{123}\text{Sb})
 
 
 This neglects the dependence on the geometrical distribution of different isotopes for
 the same atom, but is general a good approximation to the complete isotope average.
+
+
+The powder average in zero-field is performed as [#f1]_
+
+.. math::
+   :label: powder_avg
+
+    P_{powder} = (P_x + P_y + P_z)/3
+
+while for longitudinal and transverse field the a regular sampling of
+the polar angle and the azimuthal angles is performed.
+The default sampling step is :math:`\pi/7`.
+
+
+.. [#f1] For more details see the Ph.D thesis of John Wilkinson, https://ora.ox.ac.uk/objects/uuid:b7c1fc6c-70f8-44f4-a7e0-6893ea7a6f61/files/dnc580n113
