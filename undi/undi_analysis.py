@@ -56,7 +56,6 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
 
         pos = D[i] * angtom
         print('Adding atom ', symb , ' with position', pos, ' and distance ', np.linalg.norm(pos))
-        data.append({'Position': pos, 'Label': symb })
 
         # if EFG too small, neglect it.
         if np.max(np.abs(EFGs)) < 1e-9:
@@ -69,6 +68,7 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
                     {'Position': muon_pos,
                      'Label': 'mu'},
                 )
+
     return data, hdim
 
 def execute_undi_analysis(
