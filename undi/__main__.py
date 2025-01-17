@@ -54,7 +54,7 @@ def main():
     - structure (str): Structure to be parsed.
     - --max-hdim (int, optional): Dimension of the Hilbert space. Increase to have better results. Default is 1000.
     - --atom-as-muon (str, optional): Atom to be considered as muon. Default is "H".
-    - --Bmod (float, optional): Magnetic field modulus. Default is 0.0.
+    - --B_mod (float, optional): Magnetic field modulus. Default is 0.0.
     - --convergence-check (bool, optional): Flag to check for convergence. Default is False.
     - --algorithm (str, optional): Algorithm to be used for the analysis. Default is "fast".
     - --sample_size_average (int, optional): Number of random samples to for powder average. Default is 1000.
@@ -67,7 +67,7 @@ def main():
     parser.add_argument('structure', type=str, help='Structure to be parsed')
     parser.add_argument('--max-hdim', type=int, default=1e3, help='Dimension of the Hilbert space. Increase to have better results. Default is 1000.')
     parser.add_argument('--atom-as-muon', type=str, default="H", help='Atom to be considered as muon. Default is "H".')
-    parser.add_argument('--Bmod', type=float, default=0., help='Magnetic field modulus. Default is 0.0.')
+    parser.add_argument('--B_mod', type=float, default=0., help='Magnetic field modulus. Default is 0.0.')
     parser.add_argument('--convergence-check', type=bool, default=False, help='Flag to check for convergence. Default is False.')
     parser.add_argument('--algorithm', type=str, default="fast", help='Algorithm to be used for the analysis. Default is "fast".')
     parser.add_argument('--sample_size_average', type=int, default=1000, help='Number of random samples to for powder average. Default is 1000.')
@@ -75,7 +75,7 @@ def main():
      
     args = parser.parse_args()
     structure = args.structure
-    Bmod = args.Bmod
+    B_mod = args.B_mod
     convergence_check = args.convergence_check
     atom_as_muon = args.atom_as_muon
     max_hdim = args.max_hdim
@@ -91,7 +91,7 @@ def main():
     
     results = execute_undi_analysis(
         structure=atms,
-        Bmod=Bmod,
+        B_mod=B_mod,
         atom_as_muon=atom_as_muon,
         max_hdim=max_hdim,
         convergence_check=convergence_check,
