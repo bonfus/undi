@@ -32,13 +32,16 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
     data = []
     muon_pos = np.array([0,0,0])
     hdim = 2 # the muon Hilbert space
-
+    
     for i in range(len(D)):
 
         if not (ai[i] == len(atoms)-1):
             continue
 
         atom_symbol = atoms[aj[i]].symbol
+          
+        if atom_symbol == 'H':
+            break
 
         isotope_spin = spins[atom_symbol]
         # skip nuclei with no spin
