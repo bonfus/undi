@@ -123,7 +123,7 @@ def execute_undi_analysis(
         info[element] = [ i for i in isotopes if i.abundance > 5.]
 
     # Time interval
-    t = np.linspace(0, 20e-6, 200)
+    t = np.linspace(0, 20e-6, 600)
 
     # Compute results for each cluster
     results = []
