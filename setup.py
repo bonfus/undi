@@ -62,7 +62,7 @@ setup(name='undi',
       author='Pietro Bonfa',
       author_email='bonfus@gmail.com',
       license='GPLv3',
-      packages=['undi', 'undi.fast'],
+      packages=['undi', 'undi.fast', 'undi.kubo_toyabe'],
       include_package_data=True,
       install_requires = [
                           'numpy',
