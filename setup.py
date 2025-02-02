@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 from glob import glob
 
@@ -49,32 +49,32 @@ except ImportError:
 
 
 setup(name='undi',
-    version='1.1',
-    description='Muon-Nuclear Dipolar Interaction',
-    long_description=open('README.rst').read(),
-    classifiers=['License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
-             'Programming Language :: Python :: 3 :: Only',
-             'Operating System :: OS Independent',
-             'Intended Audience :: Science/Research',
-             'Topic :: Scientific/Engineering :: Physics'],
-    keywords='muSR spin nuclear',
-    url='http://github.com/bonfus/undi',
-    author='Pietro Bonfa',
-    author_email='bonfus@gmail.com',
-    license='GPLv3',
-    packages=['undi', 'undi.fast', 'undi.kubo_toyabe'],
-    package_data={'undi.kubo_toyabe': ['isotope_data.txt']},
-    include_package_data=True,
-    install_requires = [
-                  'numpy',
-                  'qutip',
-                  ],
-    extras_require = {
-      'Fast C++ implementation':  ["pybind11"],
-      'Progress bar':  ["tqdm"]
-    },
-    zip_safe=False,
-    ext_modules=ext_modules,
-    headers=glob('undi/fast/*.hpp') if ext_modules else None,
-    cmdclass={"build_ext": build_ext}
+      version='1.1',
+      description='Muon-Nuclear Dipolar Interaction',
+      long_description=open('README.rst').read(),
+      classifiers=['License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+                   'Programming Language :: Python :: 3 :: Only',
+                   'Operating System :: OS Independent',
+                   'Intended Audience :: Science/Research',
+                   'Topic :: Scientific/Engineering :: Physics'],
+      keywords='muSR spin nuclear',
+      url='http://github.com/bonfus/undi',
+      author='Pietro Bonfa',
+      author_email='bonfus@gmail.com',
+      license='GPLv3',
+      packages=['undi', 'undi.fast', 'undi.kubo_toyabe'],
+      package_data={'undi.kubo_toyabe': ['*.txt']},
+      include_package_data=True,
+      install_requires = [
+                          'numpy',
+                          'qutip',
+                          ],
+      extras_require = {
+        'Fast C++ implementation':  ["pybind11"],
+        'Progress bar':  ["tqdm"]
+      },
+      zip_safe=False,
+      ext_modules=ext_modules,
+      headers=glob('undi/fast/*.hpp') if ext_modules else None,
+      cmdclass={"build_ext": build_ext}
     )
