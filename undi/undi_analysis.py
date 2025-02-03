@@ -62,7 +62,7 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
             data.append({'Position': pos, 'Label': symb })
         else:
             print('EFG tensor is', EFGs)
-            data.append({'Position': pos, 'Label': symb, 'EFGTensor':  EFGs})
+            data.append({'Position': pos, 'Label': symb, 'EFGTensor':  EFGs[aj[i]]})
 
     data.insert(0,
                     {'Position': muon_pos,
@@ -251,7 +251,9 @@ def execute_undi_analysis(
         print("Doing sample powder average")
 
 
-        powder_signal_lf = powder_signal_tf = np.zeros_like(t)
+        powder_signal_lf = np.zeros_like(t)
+        powder_signal_tf = np.zeros_like(t)
+
         if B_mod < B_mod_earth:
             normalisation_factor = 3
             powder_signal_lf = signal_z_lf+signal_y_lf+signal_x_lf
@@ -262,8 +264,8 @@ def execute_undi_analysis(
             # Powder avg
             d_theta = np.pi / n
             d_phi = np.pi / n
-            N_theta = np.pi / d_theta
-            N_phi = 2 * np.pi / d_phi
+            N_theta = n
+            N_phi = 2 * n
             normalisation_factor = N_phi * np.sin(N_theta*d_theta/2) * \
                                     np.sin((N_theta-1)*d_theta/2) / np.sin(d_theta/2)
 
