@@ -868,7 +868,8 @@ class MuonNuclearInteraction(object):
             dims = self.create_hilbert_space(couple)
 
             H = self.dipolar_interaction(*couple)
-            self.logger.info("Adding interaction between {} and {} with distance {}".format( atoms[mu_idx]['Label'], atom['Label'], np.linalg.norm( atoms[mu_idx]['Position'] - atoms[l]['Position'] ) ) )
+            d = np.linalg.norm( atoms[mu_idx]['Position'] - atoms[l]['Position'] )
+            self.logger.info("Adding interaction between {} and {} with distance {}".format( atoms[mu_idx]['Label'], atom['Label'], d ) )
 
             if (couple[0]['Spin'] > 0.5 and 'EFGTensor' in couple[0].keys()):
                 Q, info = self.quadrupolar_interaction(couple[0])
@@ -886,7 +887,7 @@ class MuonNuclearInteraction(object):
             NucHdim = int(2*atom['Spin']+1)
             #NuclearPsi = Qobj( np.exp(2.j * np.pi * np.random.rand(NucHdim)), type='ket')
 
-            Subspaces.append({'H': H, 'NucHdim': NucHdim})
+            Subspaces.append({'H': H, 'NucHdim': NucHdim, 'Distance': d})
 
         # Convert list of dict to dict of list
         SubspacesInfo = {u: [dic[u] for dic in Subspaces] for u in Subspaces[0]} # https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
@@ -1054,8 +1055,10 @@ class MuonNuclearInteraction(object):
 
             dims = self.create_hilbert_space(couple)
 
+            d = np.linalg.norm( atoms[mu_idx]['Position'] - atoms[l]['Position'] )
+
             H = self.dipolar_interaction(*couple)
-            self.logger.info("Adding interaction between {} and {} with distance {}".format( atoms[mu_idx]['Label'], atom['Label'], np.linalg.norm( atoms[mu_idx]['Position'] - atoms[l]['Position'] ) ) )
+            self.logger.info("Adding interaction between {} and {} with distance {}".format( atoms[mu_idx]['Label'], atom['Label'], d ) )
 
             if (couple[0]['Spin'] > 0.5 and 'EFGTensor' in couple[0].keys()):
                 Q, info = self.quadrupolar_interaction(couple[0])
@@ -1073,7 +1076,10 @@ class MuonNuclearInteraction(object):
             NucHdim = int(2*atom['Spin']+1)
             #NuclearPsi = Qobj( np.exp(2.j * np.pi * np.random.rand(NucHdim)), type='ket')
 
-            Subspaces.append({'H': H, 'NucHdim': NucHdim})
+            Subspaces.append({'H': H, 'NucHdim': NucHdim, 'Distance': d})
+
+        # Sort according to distance
+        Subspaces = sorted(Subspaces, key=lambda d: d['Distance'])
 
         # Convert list of dict to dict of list
         SubspacesInfo = {u: [dic[u] for dic in Subspaces] for u in Subspaces[0]} # https://stackoverflow.com/questions/5558418/list-of-dicts-to-from-dict-of-lists
@@ -1113,7 +1119,7 @@ class MuonNuclearInteraction(object):
             self.logger.log(logging.WARNING, "Polarization different from z not yet fully implemented (but it's easy to implement)")
             o = qdot((sigmax(), sigmay(), sigmaz()), direction ).data.to_array()
         else:
-            o = sigmaz().data.todense()
+            o = sigmaz().data.to_array()
 
 
         # Insert muon polarized along positive quantization direction
