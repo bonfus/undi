@@ -654,7 +654,7 @@ class MuonNuclearInteraction(object):
         if (np.abs(np.diff(tlist,2)) > 1e-14).any():
             raise ValueError("Please provide a uniformly spaced sequence of times.")
 
-        # define types
+        # define floating point types to perform single precision or double precision
         if single_precision:
             ftype = np.float32
             ctype = np.complex64
@@ -662,16 +662,16 @@ class MuonNuclearInteraction(object):
             ftype = np.float64
             ctype = np.complex128
 
-        # internal copy
         atoms = self.atoms
         n_atoms = len(atoms)
 
         mu_idx = -1
         for l, atom in enumerate(atoms):
-            # record muon position in list. To be used to insert polarized state
+            # record muon position in list.
             if atom['Label'] == 'mu':
                 mu_idx = l
-                continue
+                break
+
         if mu_idx < 0:
             raise RuntimeError("Where is the muon!?!")
 
@@ -680,6 +680,7 @@ class MuonNuclearInteraction(object):
             if l == mu_idx:
                 continue
 
+            # internal copies
             couple = [atoms[l].copy(),  atoms[mu_idx].copy()]
 
             dims = self.create_hilbert_space(couple)
@@ -700,9 +701,8 @@ class MuonNuclearInteraction(object):
                 # Add 1/Nth field to muon
                 H += self.external_field(couple[1], self._ext_field/(n_atoms-1))
 
-            # generate maximally mixed state for nuclei (all states populated with random phase)
+            # generate maximally mixed state for nuclei (all states will be populated with random phase)
             NucHdim = int(2*atom['Spin']+1)
-            #NuclearPsi = Qobj( np.exp(2.j * np.pi * np.random.rand(NucHdim)), type='ket')
 
             Subspaces.append({'H': H, 'NucHdim': NucHdim, 'Distance': d})
 
