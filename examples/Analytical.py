@@ -15,6 +15,7 @@ except (ImportError, ModuleNotFoundError):
     from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
+from pprint import pprint
 
 #| Define physical constants.
 
@@ -41,7 +42,7 @@ Quadrupole_moment_I = 0.1466e-28 # m^2, quadrupole moment of Al.
 
 wd = 0.11e6 # s^-1
 wd_to_d = np.cbrt((mu0_over_4pi) * gamma_mu * gamma_I * hbar / wd)
-omega_E = -1.1e6 # 1.1e6 # s^-1
+omega_E = 1.1e6 # s^-1
 omega_E_to_Vzz = omega_E * hbar * 4 * I * (2*I -1) / (Quadrupole_moment_I * elementary_charge)
 
 # scale distance to get the expected omega_d
@@ -82,9 +83,13 @@ atoms = [
         }
     ]
 
+np.set_printoptions(precision=4)
+pprint(atoms)
+
+
 #| ## Polarization function.
 #|
-#| The muon polarization is obtained with the method introduced by Celio.
+#| Compute the polarisation function for various longitudinal fields
 
 steps = 200
 tlist = np.linspace(0, 20e-6, steps) # Time scale, in seconds.
@@ -93,8 +98,7 @@ tlist = np.linspace(0, 20e-6, steps) # Time scale, in seconds.
 
 LongitudinalFields = np.array([0.0, 0.001, 0.00164, 0.003, 0.00329, 0.004, 0.005, 0.006, 0.007])
 
-#This is the Celio method for the polarization function with positive EFG.
-print("Computing signal for positive EFGs...", end='', flush=True)
+print("Computing signal for various longitudinal fields...", end='', flush=True)
 
 signI_positive_EFG = np.zeros([len(LongitudinalFields), steps]) # Define the polarization signal with positive EFGs.
 
@@ -105,16 +109,10 @@ for i, B in enumerate(LongitudinalFields):
 
     NS = MuonNuclearInteraction(atoms, external_field=B_pos, log_level='warn')
     
-    repeat = int(np.ceil(10/NS.Hdim))
-    for _ in range(repeat):
-        # use Celio
-        #signI_positive_EFG[i] += NS.celio(tlist,  k=1)
-        # or exact alternative
-        signI_positive_EFG[i] += NS.polarization(tlist)
-
+    signI_positive_EFG[i] = NS.polarization(tlist)
 
     del NS
-signI_positive_EFG /= repeat
+
 print('done!')
 
 #| The Hamiltonian describing I-mu interaction is
@@ -144,16 +142,16 @@ print('done!')
 #| \end{array}
 #| $$
 #|
-#| But there is a factor 2 popping up in $\omega_d$, also in the book.
+#| But there is a mismatch of a factor 2 in $\omega_d$. It appears to be required also to reproduce the plots in the book.
 
-
+MISTERIOUS_FACTOR_TWO = 2
 rm = lambda wid, I, m: (wid/2.) * np.sqrt(I*(I+1) - m*(m-1))
 sm = lambda we, wid, wi,wmu, m: (2*m-1)*(3*we+wid/2) - wi + wmu
 
 def pz(t, I, wid, we, B=0):
     s = np.zeros_like(t)
-    wi  = gamma_I * B * 1e-6
-    wmu = gamma_mu * B * 1e-6
+    wi  = gamma_I * B
+    wmu = gamma_mu * B
     for m in np.arange(-I,I+1,1):
         s2 = (sm(we, wid, wi, wmu, m))**2
         r2 = (rm(wid,I,m))**2
@@ -164,7 +162,7 @@ def pz(t, I, wid, we, B=0):
 f, axes = plt.subplots(nrows=3,ncols=3,figsize=(10,10))
 for i in range(3):
     for j in range(3):
+        # Just an index to plot results in various panels
         l = i+j*3
         axes[j,i].plot(tlist, signI_positive_EFG[l],'.')
-        # Set values in us^-1
-        axes[j,i].plot(tlist, pz(tlist*1e6,I,2*wd*1e-6,omega_E*1e-6,B=LongitudinalFields[l]))
+        axes[j,i].plot(tlist, pz(tlist,I,MISTERIOUS_FACTOR_TWO*wd,omega_E,B=LongitudinalFields[l]))
