@@ -9,7 +9,7 @@ from scipy.linalg import expm, ishermitian
 from copy import deepcopy
 from fractions import Fraction
 
-from isotopes import Element as element
+from undi.isotopes import Element as element
 
 
 qdot = lambda x,y : np.dot(x[0],y[0]) + np.dot(x[1],y[1]) + np.dot(x[2],y[2])
