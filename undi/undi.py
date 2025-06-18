@@ -793,8 +793,8 @@ class MuonNuclearInteraction(object):
         self.logger.info("Size of wavefunction: {} MB".format( psid.nbytes/1024/1024 ) )
 
         # Normalize
-        Normalization = 1./np.sqrt(HdimHalf)
-        psid = psid * Normalization
+        Normalization = 1./np.sqrt(HdimHalf, dtype=ctype)
+        np.multiply(psid , Normalization, casting='no')
 
         dUs = computeU(tlist[1]-tlist[0], k)
 
