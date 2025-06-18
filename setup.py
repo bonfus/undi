@@ -66,8 +66,7 @@ setup(name='undi',
       include_package_data=True,
       install_requires = [
                           'numpy',
-                          'qutip'
-                          ],
+                         ],
       extras_require = {
         'Fast C++ implementation':  ["pybind11"],
         'Progress bar':  ["tqdm"]

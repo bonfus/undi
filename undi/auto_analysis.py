@@ -61,7 +61,7 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
         if np.max(np.abs(EFGs)) < 1e-9:
             data.append({'Position': pos, 'Label': symb })
         else:
-            print('EFG tensor is', EFGs)
+            print('EFG tensor is', EFGs[aj[i]])
             data.append({'Position': pos, 'Label': symb, 'EFGTensor':  EFGs[aj[i]]})
 
     data.insert(0,
@@ -71,13 +71,16 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
 
     return data, hdim
 
-def execute_undi_analysis(
+def execute_auto_analysis(
         structure: Atoms,
         B_mod: float = 0.0,
         atom_as_muon: str = 'H',
         max_hdim: int = 10000,
         convergence_check: bool = False,
+        lf=True,
+        tf=True,
         algorithm: str = 'fast',
+        powder_average = True,
         angular_integration_steps: int = 7
     ):
     """
@@ -89,6 +92,7 @@ def execute_undi_analysis(
         max_hdim (int, optional): The maximum Hilbert space dimension. Default is 1000.
         convergence_check (bool, optional): If True, perform convergence check. Default is False.
         algorithm (str, optional): The algorithm to use for the analysis. Default is 'fast'.
+        powder_average (bool, optional): Wether to perform or not powder average. This is a time consuming task when B_mod /= 0.
         angular_integration_steps (int, optional):  Number of step in theta and phi for powder average. Default is 7.
                                                     Should be converged for accurate results.
         Returns:
@@ -120,7 +124,7 @@ def execute_undi_analysis(
         info[element] = [ i for i in isotopes if i.abundance > 5.]
 
     # Time interval
-    t = np.linspace(0, 20e-6, 200)
+    t = np.linspace(0, 10e-6, 200)
 
     # Compute results for each cluster
     results = []
@@ -188,35 +192,48 @@ def execute_undi_analysis(
         # Single crystal signals
 
         # Written explicitely, to make it more clear.
+        zf = B_mod < B_mod_earth
+        if zf:
+            lf=True
+            tf=False
 
-        ## signal z
-        print("Doing sample along Z, LF")
-        direction = np.array([0.,0.,1.])
-        ### LF
-        NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
-        NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-        signal_z_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
-        del NS
+        signal_x_lf = np.zeros_like(t)
+        signal_y_lf = np.zeros_like(t)
+        signal_z_lf = np.zeros_like(t)
+        if lf:
+            ## signal z
+            print("Doing sample along Z, LF")
+            direction = np.array([0.,0.,1.])
+            ### LF
+            NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
+            NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
+            signal_z_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            del NS
 
-        ## signal x
-        direction = np.array([1.,0.,0.])
-        ### LF
-        print("Doing sample along X, LF")
-        NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
-        NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-        signal_x_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
-        del NS
+            ## signal x
+            direction = np.array([1.,0.,0.])
+            ### LF
+            print("Doing sample along X, LF")
+            NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
+            NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
+            signal_x_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            del NS
 
-        ## signal y
-        direction = np.array([0.,1.,0.])
-        ### LF
-        print("Doing sample along Y, LF")
-        NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
-        NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-        signal_y_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
-        del NS
+            ## signal y
+            direction = np.array([0.,1.,0.])
+            ### LF
+            print("Doing sample along Y, LF")
+            NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
+            NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
+            signal_y_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            del NS
 
-        if B_mod > B_mod_earth:
+
+        signal_x_tf = np.zeros_like(t)
+        signal_y_tf = np.zeros_like(t)
+        signal_z_tf = np.zeros_like(t)
+
+        if tf:
             ### TF ###
             # Z
             direction = np.array([0.,0.,1.])
@@ -241,55 +258,60 @@ def execute_undi_analysis(
             NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
             signal_y_tf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
             del NS
-        else:
+
+        if zf:
             signal_z_tf = signal_z_lf
             signal_x_tf = signal_x_lf
             signal_y_tf = signal_y_lf
 
         # powder averages: if ZF, just isotropic spatial average.
         # if LF or TF, we randomly rotate the sample 1000 times and we average.
-        print("Doing sample powder average")
+
 
 
         powder_signal_lf = np.zeros_like(t)
         powder_signal_tf = np.zeros_like(t)
+        if powder_average:
+            print("Doing sample powder average")
 
-        if B_mod < B_mod_earth:
-            normalisation_factor = 3
-            powder_signal_lf = signal_z_lf+signal_y_lf+signal_x_lf
-            powder_signal_tf = signal_z_tf+signal_y_tf+signal_x_tf
-        else:
-            n = angular_integration_steps # should the at least 7
+            if zf:
+                normalisation_factor = 3
+                powder_signal_lf = signal_z_lf+signal_y_lf+signal_x_lf
+                powder_signal_tf = signal_z_tf+signal_y_tf+signal_x_tf
+            else:
+                n = angular_integration_steps # should the at least 7
 
-            # Powder avg
-            d_theta = np.pi / n
-            d_phi = np.pi / n
-            N_theta = n
-            N_phi = 2 * n
-            normalisation_factor = N_phi * np.sin(N_theta*d_theta/2) * \
-                                    np.sin((N_theta-1)*d_theta/2) / np.sin(d_theta/2)
+                # Powder avg
+                d_theta = np.pi / n
+                d_phi = np.pi / n
+                N_theta = n
+                N_phi = 2 * n
+                normalisation_factor = N_phi * np.sin(N_theta*d_theta/2) * \
+                                        np.sin((N_theta-1)*d_theta/2) / np.sin(d_theta/2)
 
-            pbartheta = tqdm(np.arange(d_theta, np.pi, d_theta))
-            pbartheta.set_description('θ: ')
-            for theta in pbartheta:
-                pbarphi = tqdm(np.arange(0, 2*np.pi, d_phi), leave=False)
-                pbarphi.set_description('φ: ')
-                for phi in pbarphi:
-                    direction = np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)])
+                pbartheta = tqdm(np.arange(d_theta, np.pi, d_theta))
+                pbartheta.set_description('θ: ')
+                for theta in pbartheta:
+                    pbarphi = tqdm(np.arange(0, 2*np.pi, d_phi), leave=False)
+                    pbarphi.set_description('φ: ')
+                    for phi in pbarphi:
+                        direction = np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), np.cos(theta)])
 
-                    NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
-                    NS.translate_rotate_sample_vec(direction)
-                    powder_signal_lf += np.sin(theta) * NS.celio_on_steroids(t,  k=2, algorithm=algorithm, progress = False)
-                    del NS
+                        if lf:
+                            NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
+                            NS.translate_rotate_sample_vec(direction)
+                            powder_signal_lf += np.sin(theta) * NS.celio_on_steroids(t,  k=2, algorithm=algorithm, progress = False)
+                            del NS
 
-                    NS = MuonNuclearInteraction(undi_input,external_field=B_tf)
-                    NS.translate_rotate_sample_vec(direction)
-                    powder_signal_tf += np.sin(theta) * NS.celio_on_steroids(t,  k=2, algorithm=algorithm, progress = False)
-                    del NS
+                        if tf:
+                            NS = MuonNuclearInteraction(undi_input,external_field=B_tf)
+                            NS.translate_rotate_sample_vec(direction)
+                            powder_signal_tf += np.sin(theta) * NS.celio_on_steroids(t,  k=2, algorithm=algorithm, progress = False)
+                            del NS
 
 
-        powder_signal_lf /= normalisation_factor
-        powder_signal_tf /= normalisation_factor
+            powder_signal_lf /= normalisation_factor
+            powder_signal_tf /= normalisation_factor
 
         results.append(
             {
