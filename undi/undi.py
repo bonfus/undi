@@ -794,7 +794,7 @@ class MuonNuclearInteraction(object):
 
         # Normalize
         Normalization = 1./np.sqrt(HdimHalf, dtype=ctype)
-        np.multiply(psid , Normalization, casting='no')
+        psid = np.multiply(psid , Normalization, casting='no')
 
         dUs = computeU(tlist[1]-tlist[0], k)
 
