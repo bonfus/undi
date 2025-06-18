@@ -216,6 +216,13 @@ its usage is explained with a number of examples discussed below.
 For production runs, an orders of magnitude faster C++ implementation of this algoritm is available.
 To enable this extension install c++ compilers and pybind11. The subroutine is called `celio_on_steroids`.
 
+Orientational averages
+----------------------
+
+For information on how to perform orientational averages see
+
+https://www.nature.com/articles/s41598-021-93558-1
+
 
 Some important conventions
 --------------------------
