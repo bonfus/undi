@@ -10,3 +10,4 @@ Examples
    LaCuO4
    Al
    Hartmann
+   Analytical
