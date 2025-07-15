@@ -30,7 +30,7 @@ def brewer(t, r, gamma_F):
     hbar=h/(2*np.pi) # Js
     mu_0=(4e-7)*np.pi # Tm A-1
 
-    gamma_mu = 2*np.pi*135.5e6
+    gamma_mu = MuonNuclearInteraction.gammas['mu']
     #gamma_F  = 2*np.pi*40.053e6
 
     omegad = (mu_0*gamma_mu*gamma_F*(hbar))
