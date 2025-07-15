@@ -34,7 +34,7 @@ try:
         [
             Pybind11Extension(
                 "fast_quantum_blas",
-                ["undi/permutations.cpp", "undi/fast/fast_blas.cpp"],
+                ["undi/fast/permutations.cpp", "undi/fast/fast_blas.cpp"],
                 extra_compile_args='-O3 -fopenmp -ffast-math -g'.split(),
                 extra_link_args='-O3 -fopenmp -ffast-math -g'.split() + MKL_L.split(),
                 include_dirs=[MKL_I]
