@@ -104,7 +104,7 @@ def gen_atoms(positions):
 
 #| ## Polarization function.
 #|
-#| The muon polarization is obtained with the method introduced by Celio.
+#| The muon polarization is obtained with the method introduced by celio_on_steroids.
 
 time_max = 20e-6 # Value of the temporal window, in seconds.
 freq_max = 400e6 # Value of the sampling frequency, in Hz.
@@ -125,7 +125,7 @@ B_dir = np.array([1.,0.,0.])
 if COMPUTE:
     print("Computing signal for positive EFGs...", end='', flush=True)
 
-    signal = np.zeros((fields, axis, steps))
+    signal = np.zeros((fields, 3, steps))
 
     for i in range(fields):
         #| Align the magnetic fields along x.
@@ -135,21 +135,21 @@ if COMPUTE:
         R = np.eye(3)
         rpos = np.dot(R,pos.T).T
         NS = MuonNuclearInteraction(gen_atoms(rpos), external_field=B, log_level='info')
-        signal[i,0,:] = NS.celio(tlist,  k=1) + NS.celio(tlist,  k=1)
+        signal[i,0,:] = NS.celio_on_steroids(tlist,  k=1) + NS.celio_on_steroids(tlist,  k=1)
         del NS
 
         # rotate 45 deg with axis=z to get [110] along B direction, which is x
         R = rotation_matrix([0,0,1], np.pi/4)
         rpos = np.dot(R,rpos.T).T
         NS = MuonNuclearInteraction(gen_atoms(rpos), external_field=B, log_level='info')
-        signal[i,1,:] = NS.celio(tlist,  k=1) + NS.celio(tlist,  k=1)
+        signal[i,1,:] = NS.celio_on_steroids(tlist,  k=1) + NS.celio_on_steroids(tlist,  k=1)
         del NS
 
         # rotate 45 deg again, but this time with axis y.
         R = rotation_matrix([0,1,0], np.pi/4)
         rpos = np.dot(R,rpos.T).T
         NS = MuonNuclearInteraction(gen_atoms(rpos), external_field=B, log_level='info')
-        signal[i,2,:] = NS.celio(tlist,  k=1) + NS.celio(tlist,  k=1)
+        signal[i,2,:] = NS.celio_on_steroids(tlist,  k=1) + NS.celio_on_steroids(tlist,  k=1)
         del NS
 
     signal /= 2.
@@ -160,6 +160,18 @@ else:
     signal = data.get('signal')
 
 #| ## Real space analysis
+#|
+#| In a μSR-experiment data are collected from a large number of decaying muons,
+#| each sitting in a different field determined by the local arrangement of its surrounding
+#| nuclear moments. The distribution of these local fields is Gaussian, with average
+#| value zero and the width determined by the spread $\langle \DeltaB^2 _{dip}\rangle$.
+#| If an external field $B_{ext}$ is applied, the average precession frequency
+#|  of the muon system will still be ωB = (gμμN/ℏ)Bext, but the distribution of the fields will give rise to a damping factor of the
+#| of the form exp(−σ2t2) with σ = (1/√2)(gμμN/ℏ)√⟨ΔB2dip⟩. This form of damping
+#| is called Gaussian.
+#| The magnitude of the damping factor σ depends on the spins of the nuclei (I),
+#| the strength of the nuclear dipoles μI = gIIμN and on the position (distance ri and
+#| angle θi with respect to the applied magnetic field Bext) of the surrounding nuclei
 
 bhar = np.empty((fields, 3))
 
@@ -213,7 +225,7 @@ plt.show()
 # Add some interpolation
 zero_padding = 4
 # prepare spaze for Fourier transforms...
-yf = np.empty((fields, 3, zero_padding*len(tlist)//2+1), dtype=np.complex)
+yf = np.empty((fields, 3, zero_padding*len(tlist)//2+1), dtype=complex)
 # ...but work in omega domain, not in frequency, notice   VVV
 xf = np.fft.rfftfreq(zero_padding*len(tlist), tlist[1]/(2*np.pi))
 
