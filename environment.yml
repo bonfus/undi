@@ -1,10 +1,10 @@
 name: Undi-env
 channels:
-- conda-forge
+  - conda-forge
 dependencies:
-- python==3.*
-- pip
-- cython
-- numpy
-- scipy
-- matplotlib
+  - python >=3.7,<4.0
+  - pip
+  - cython
+  - numpy
+  - scipy
+  - matplotlib
