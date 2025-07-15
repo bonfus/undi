@@ -9,7 +9,7 @@ from scipy.linalg import expm, ishermitian
 from copy import deepcopy
 from fractions import Fraction
 
-from undi.isotopes import Element as element
+from .isotopes import Element as element
 
 
 qdot = lambda x,y : np.dot(x[0],y[0]) + np.dot(x[1],y[1]) + np.dot(x[2],y[2])
@@ -59,7 +59,7 @@ class MuonNuclearInteraction(object):
     """The main UNDI class"""
 
     # Collection of gammas, never really used apart from muon's one.
-    gammas = {'mu': 2*np.pi*135.5e6,
+    gammas = {'mu': 2*np.pi*135.53881e6,
               'F' : 2*np.pi*40.053e6,
               'H' : 2*np.pi*42.577e6,
               'V' : 2*np.pi*11.212944e6} # (sT)^-1
