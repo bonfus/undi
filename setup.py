@@ -40,12 +40,16 @@ try:
                 include_dirs=[MKL_I]
             ),
         ]
-    
+
+    ext_kwargs = {'ext_modules':ext_modules,
+                  'headers': glob('undi/fast/*.hpp'),
+                  'cmdclass' : {"build_ext": build_ext}
+                 }
+   
 
 except ImportError:
     print("No Pybind11 => This is no good!")
-    ext_modules = []
-    build_ext = None
+    ext_kwargs = {}
 
 
 setup(name='undi',
@@ -72,7 +76,5 @@ setup(name='undi',
         'Progress bar':  ["tqdm"]
       },
       zip_safe=False,
-      ext_modules=ext_modules,
-      headers=glob('undi/fast/*.hpp') if ext_modules else None,
-      cmdclass={"build_ext": build_ext}
+      **ext_kwargs
     )
