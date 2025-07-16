@@ -201,7 +201,7 @@ class MuonNuclearInteraction(object):
         E_q = planck2pi_neVs * a_i['OmegaQmu']
 
         # Quadrupole
-        return E_q * ( qdot(n, I) @ qdot(n, I) - 0.33333333333*(l * (l+1)))
+        return E_q * ( qdot(n, I) @ qdot(n, I) - 0.33333333333*qdot(I,I) )
 
     @staticmethod
     def custom_term(a_i):
@@ -775,8 +775,8 @@ class MuonNuclearInteraction(object):
 
         # Insert muon polarized along positive quantization direction
         if not np.allclose(direction,[0,0,1]):
-            e, v  = (o+qeye(2)).eigenstates()
-            mu_psi = v[1] if e[1] > 0.1 else v[0]
+            e, v  = np.linalg.eig(o+qeye(2))
+            mu_psi = v[:,1] if e[1] > 0.1 else v[:,0]
         else:
             mu_psi = np.array([1.,0.j]) # basis(2,0)
 
@@ -1193,6 +1193,9 @@ class MuonNuclearInteraction(object):
         return 0.333333333333 + 0.6666666666 * \
                 (1- Gmu_S2  *  np.power(tlist,2)) * \
                 np.exp( - 0.5 * Gmu_S2 * np.power(tlist,2))
+
+    # Legacy
+    celio = celio_on_steroids
 
 if __name__ == '__main__':
     """
