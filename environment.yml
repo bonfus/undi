@@ -8,3 +8,5 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
+  - pip:
+    - .
