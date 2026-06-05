@@ -201,7 +201,7 @@ class MuonNuclearInteraction(object):
         E_q = planck2pi_neVs * a_i['OmegaQmu']
 
         # Quadrupole
-        return E_q * ( qdot(n, I) @ qdot(n, I) - 0.33333333333*qdot(I,I) )
+        return E_q * ( qdot(n, I) @ qdot(n, I) - 0.33333333333*(l * (l+1)))
 
     @staticmethod
     def custom_term(a_i):
@@ -483,6 +483,8 @@ class MuonNuclearInteraction(object):
 
         for i in range(natoms):
             self.atoms[i]['Position'] = rmat.dot(self.atoms[i]['Position'])
+            if 'LocalField' in self.atoms[i].keys():
+                self.atoms[i]['LocalField'] = rmat.dot(self.atoms[i]['LocalField'])
             if 'EFGTensor' in self.atoms[i].keys():
                 self.atoms[i]['EFGTensor'] = np.dot(rmat, np.dot(self.atoms[i]['EFGTensor'], irmat))
 
@@ -560,10 +562,10 @@ class MuonNuclearInteraction(object):
                 H += self.custom_term(a_i)
 
 
-        # External field
-        if np.linalg.norm(self._ext_field) > 0.000001:
-            for a_i in atoms:
-                H += self.external_field(a_i, self._ext_field)
+        # External field and local field
+        for a_i in atoms:
+            local_field = a_i.get('LocalField', np.zeros(3))
+            H += self.external_field(a_i, self._ext_field + local_field)
 
         self.H = H
 
@@ -697,7 +699,7 @@ class MuonNuclearInteraction(object):
 
             if np.linalg.norm(self._ext_field) > 0.000001:
                 # Add field to atom
-                H += self.external_field(couple[0], self._ext_field)
+                H += self.external_field(couple[0], self._ext_field + couple[0].get('LocalField', np.zeros(3)))
                 # Add 1/Nth field to muon
                 H += self.external_field(couple[1], self._ext_field/(n_atoms-1))
 
@@ -886,7 +888,7 @@ class MuonNuclearInteraction(object):
 
             if np.linalg.norm(self._ext_field) > 0.000001:
                 # Add field to atom
-                H += self.external_field(couple[0], self._ext_field)
+                H += self.external_field(couple[0], self._ext_field + couple[0].get('LocalField', np.zeros(3)))
                 # Add 1/Nth field to muon
                 H += self.external_field(couple[1], self._ext_field/(n_atoms-1))
 
@@ -942,8 +944,8 @@ class MuonNuclearInteraction(object):
 
         # Insert muon polarized along positive quantization direction
         if not np.allclose(direction,[0,0,1]):
-            e, v  = (o+qeye(2)).eigenstates()
-            mu_psi = v[1] if e[1] > 0.1 else v[0]
+            e, v  = np.linalg.eig(o+qeye(2))
+            mu_psi = v[:,1] if e[1] > 0.1 else v[:,0]
         else:
             mu_psi = basis(2,0)
 
