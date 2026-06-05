@@ -9,7 +9,7 @@ from scipy.linalg import expm, ishermitian
 from copy import deepcopy
 from fractions import Fraction
 
-from .isotopes import Element as element
+from isotopes import Element as element
 
 
 qdot = lambda x,y : np.dot(x[0],y[0]) + np.dot(x[1],y[1]) + np.dot(x[2],y[2])
@@ -1195,6 +1195,36 @@ class MuonNuclearInteraction(object):
         return 0.333333333333 + 0.6666666666 * \
                 (1- Gmu_S2  *  np.power(tlist,2)) * \
                 np.exp( - 0.5 * Gmu_S2 * np.power(tlist,2))
+
+    def get_approx_QLC_resonance_field(self):
+        """
+        Computes the approximate avoided level crossing resonance
+        field for each quadrupolar nucleus.
+        """
+        for a_i in self.atoms:
+            l = a_i['Spin']
+
+            # no quadrupolar interaction for spin 1/2
+            if (l < 0.5001):
+                continue
+
+            EFG = a_i['EFGTensor']
+            Q = a_i['ElectricQuadrupoleMoment']
+
+            # PAS
+            ee, ev = np.linalg.eig(EFG)
+            Vxx,Vyy,Vzz = ee[np.argsort(np.abs(ee))]
+
+            # declare just in case EFG is zero
+            eta = 0
+            if abs(Vzz) >= 0.000001:
+                eta = (Vxx-Vyy)/Vzz
+
+            E_q = J_to_neV * ( elementary_charge * Q * Vzz / (4*l *(2*l -1)) )
+
+            omega_q = E_q * one_over_plank2pi_neVs
+
+            print(2*np.pi*omega_q/gammas['mu'])
 
     # Legacy
     celio = celio_on_steroids
