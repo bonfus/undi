@@ -16,6 +16,7 @@ except (ImportError, ModuleNotFoundError):
     from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.integrate import trapezoid as trapz
 
 #| Define physical constants.
 
@@ -115,7 +116,7 @@ print('done again!')
 
 #| Integrate the different curves to reproduce Fig.7.8 (right).
 
-area = np.trapz(signal_positive_EFG, x = 1e6*tlist, dx = 0.2e-6)
+area = trapz(signal_positive_EFG, x = 1e6*tlist, dx = 0.2e-6)
 
 #| ...and the results are:
 
