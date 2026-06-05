@@ -201,7 +201,7 @@ class MuonNuclearInteraction(object):
         E_q = planck2pi_neVs * a_i['OmegaQmu']
 
         # Quadrupole
-        return E_q * ( qdot(n, I) @ qdot(n, I) - 0.33333333333*(l * (l+1)))
+        return E_q * ( qdot(n, I) @ qdot(n, I) - 0.33333333333*qdot(I,I))
 
     @staticmethod
     def custom_term(a_i):
