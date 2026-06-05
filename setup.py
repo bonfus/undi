@@ -48,7 +48,7 @@ try:
    
 
 except ImportError:
-    print("No Pybind11 => This is no good!")
+    print("No Pybind11 => This is no good! Celio's algorithm will be very slow!")
     ext_kwargs = {}
 
 
@@ -68,9 +68,11 @@ setup(name='undi',
       license='GPLv3',
       packages=['undi', 'undi.fast'],
       include_package_data=True,
-      install_requires = [
-                          'numpy',
-                         ],
+      requires = [
+                  'setuptools',
+                  'numpy',
+                  'scipy'
+                 ],
       extras_require = {
         'Fast C++ implementation':  ["pybind11"],
         'Progress bar':  ["tqdm"]
