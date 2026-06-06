@@ -23,12 +23,7 @@
 #| A.Yaouanc and P. de Réotier, Muon Spin Rotation, Relaxation and Resonance,
 #| Oxford University Press, 2010, chapter 6, Fig. 6.19 (left).
 
-try:
-    from undi import MuonNuclearInteraction
-except (ImportError, ModuleNotFoundError):
-    import sys
-    sys.path.append('../undi')
-    from undi import MuonNuclearInteraction
+from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit

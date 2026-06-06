@@ -1,10 +1,5 @@
 # Importing stuff...
-try:
-    from undi import MuonNuclearInteraction
-except (ImportError, ModuleNotFoundError):
-    import sys
-    sys.path.append('../undi')
-    from undi import MuonNuclearInteraction
+from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
 

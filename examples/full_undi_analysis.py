@@ -1,12 +1,12 @@
 import json
-from undi.undi_analysis import execute_undi_analysis
+from undi.auto_analysis import execute_auto_analysis
 from ase.io import read 
 
 structure = read('Cu6H.cif')
 
 # to dump into results.json: res = execute_undi_analysis(structure,max_hdim=1e3)
 # else
-res = execute_undi_analysis(structure,max_hdim=1e4, B_mod=0.001)
+res = execute_auto_analysis(structure,max_hdim=1e4, B_mod=0.001)
 
 with open('results.json','w') as f:
     json.dump(res, f)

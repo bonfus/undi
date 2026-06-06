@@ -5,12 +5,7 @@
 #| $G(t)=\frac{1}{6}\left[3+\cos(\sqrt{3} \omega_\text{D} t)+\left(1-\frac{1}{\sqrt{3}}\right)\cos(\frac{3-\sqrt{3}}{2}\omega_\text{D} t)+\left(1+\frac{1}{\sqrt{3}}\right)\cos(\frac{3+\sqrt{3}}{2}\omega_\text{D} t)\right]$
 
 # Importing stuff...
-try:
-    from undi import MuonNuclearInteraction
-except (ImportError, ModuleNotFoundError):
-    import sys
-    sys.path.append('../undi')
-    from undi import MuonNuclearInteraction
+from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
 

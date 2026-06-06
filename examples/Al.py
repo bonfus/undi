@@ -8,12 +8,7 @@
 #| For the physical aspects, see A.Yaouanc and P. de Réotier, Muon Spin Rotation, Relaxation and Resonance,
 #| Oxford University Press, 2010, chapter 7, Fig. 7.8.
 
-try:
-    from undi import MuonNuclearInteraction
-except (ImportError, ModuleNotFoundError):
-    import sys
-    sys.path.append('../undi')
-    from undi import MuonNuclearInteraction
+from undi import MuonNuclearInteraction
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import trapezoid as trapz

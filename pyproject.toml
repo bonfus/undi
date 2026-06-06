@@ -1,0 +1,24 @@
+[project]
+name = "undi"
+dynamic = [
+    "version",
+    "description",
+    "keywords",
+    "readme"
+]
+requires-python = ">=3.9"
+dependencies = [
+    "pybind11",
+    "numpy",
+    "scipy"
+]
+
+[build-system]
+requires = [
+    "setuptools>=42",
+    "pybind11",
+    "numpy",
+    "scipy"
+]
+
+build-backend = "setuptools.build_meta"
