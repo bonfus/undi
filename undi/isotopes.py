@@ -478,10 +478,10 @@ class Element:
     #    ],
     #)
     info = DotArray(np.loadtxt(easyspin_isotope_info, comments='%',
-                                dtype=[('Z', 'int32'), ('A', 'int32'), ('Stable', 'U1'),
-                                ('Symbol', 'U2'), ('Element', 'U10'), ('Spin', 'float'),
-                                ('G_factor', 'float'), ('Abundance', 'float'),
-                                ('Quadrupole', 'float') ]))
+                            dtype=[('Z', np.int32), ('A', np.int32), ('Stable', 'U1'),
+                            ('Symbol', 'U2'), ('Element', 'U10'), ('Spin', np.float64),
+                            ('G_factor', np.float64), ('Abundance', np.float64),
+                            ('Quadrupole', np.float64) ]))
 
     def __init__(self, symbol):
         self.isotopes = []
