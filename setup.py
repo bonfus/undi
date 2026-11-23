@@ -67,7 +67,6 @@ setup(name='undi',
       author_email='bonfus@gmail.com',
       license='GPLv3',
       packages=['undi', 'undi.fast', 'undi.kubo_toyabe'],
-      package_data={'undi.kubo_toyabe': ['*.txt']},
       include_package_data=True,
       requires = [
                   'setuptools',

@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 angtom = 1e-10
 
-def check_enough_isotopes(structure, abundance_threshold=5., spin_threshold=0.49, without_muon=True):
+def check_enough_isotopes(structure, abundance_threshold=5., spin_threshold=0.49, without_muon=True, atom_as_muon='H'):
     """Collect the relevant isotopes and check that at least one of them has spin.
 
     Only isotopes with abundance > abundance_threshold (in %) are collected.
@@ -44,7 +44,7 @@ def check_enough_isotopes(structure, abundance_threshold=5., spin_threshold=0.49
 
     candidate_isotopes = []
     for element, abundant_isotopes in info.items():
-        if element == 'H':
+        if element == atom_as_muon:
             continue
         for isotope in abundant_isotopes:
             if isotope.spin >= spin_threshold:
@@ -180,7 +180,7 @@ def execute_auto_analysis(
         raise RuntimeError("Muon should appear as last atom")
 
     # Collect relevant isotopes (i.e. abundance > abundance_threshold)
-    info, isotope_list = check_enough_isotopes(structure, abundance_threshold)
+    info, isotope_list = check_enough_isotopes(structure, abundance_threshold, atom_as_muon)
     if len(isotope_list) == 0:
         raise RuntimeError(
             "No isotopes with spin >= 0.49 found in the structure. "

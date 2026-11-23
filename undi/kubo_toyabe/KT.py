@@ -1,32 +1,12 @@
 """Kubo-Toyabe second moments from the nuclear environment of the muon.
 
-Requires the optional dependencies `pandas` and `ase`
-(pip install undi[kubo_toyabe]).
+Isotope data (abundance, spin, g-factor) come from `undi.isotopes`.
+Requires the optional dependency `ase` (pip install undi[kubo_toyabe]).
 """
-from importlib.resources import files
-
 import numpy as np
-import pandas as pd
 from ase import neighborlist
 
-file = files(__package__) / "isotopedata.txt"
-
-info = pd.read_table(
-    file,
-    comment="%",
-    sep=r"\s+",
-    names=[
-        "Z",
-        "A",
-        "Stable",
-        "Symbol",
-        "Element",
-        "Spin",
-        "G_factor",
-        "Abundance",
-        "Quadrupole",
-    ],
-)
+from undi.isotopes import Element
 
 munhbar = 7.622593285e6 * 2 * np.pi  # mu_N/hbar, SI
 # (2/3)(μ_0/4pi)^2 (planck2pi 2pi × 135.5 MHz/T )^2 = 5.374 021 39 × 10^(−65) kg²·m^(6)·A^(−2)·s^(−4)
@@ -34,7 +14,11 @@ factor = 5.37402139e-5  # angstrom instead of m
 
 
 def get_isotopes(Z):
-    return info[info.Z == Z][["Abundance", "Spin", "G_factor"]].to_numpy()
+    """Abundance (%), spin and g-factor of all the isotopes of the element with atomic number Z."""
+    isotopes = Element.info[Element.info.Z == Z]
+    return np.column_stack(
+        [isotopes.Abundance, isotopes.Spin, isotopes.G_factor]
+    ).astype(float)
 
 
 def compute_second_moments(atms, cutoff_distances={}):

@@ -63,7 +63,7 @@ def test_execute_raises_if_muon_not_last():
 def test_other_hydrogens_are_not_neighbours():
     structure = Atoms('HCuH', positions=[[0, 0, 2.0], [1.5, 0, 0], [0, 0, 0]])
     data, hdim = gen_neighbouring_atomic_structure(
-        structure, {'Cu': 63}, {'Cu': 1.5}, 10000)
+        structure, {'Cu': 63}, {'Cu': 1.5}, 10000, 'H')
     assert [d['Label'] for d in data] == ['mu', '63Cu']
     assert hdim == 8
 
@@ -95,7 +95,7 @@ def test_convergence_check_returns_all_clusters(monkeypatch):
         assert np.allclose(r['signal_z_lf'], 1.)
     # only the Z LF signal is computed, no powder average etc.
     assert 'signal_powder_lf' not in results[0]
-    assert FakeInteraction.calls == 10  # 5 iterations x 2 clusters
+    assert FakeInteraction.calls == 12  # 6 iterations x 2 clusters
 
 
 def test_abundance_threshold_changes_clusters(monkeypatch):
