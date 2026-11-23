@@ -13,6 +13,45 @@ from tqdm import tqdm
 
 angtom = 1e-10
 
+def check_enough_isotopes(structure, abundance_threshold=5., spin_threshold=0.49, without_muon=True):
+    """Collect the relevant isotopes and check that at least one of them has spin.
+
+    Only isotopes with abundance > abundance_threshold (in %) are collected.
+    Candidate isotopes are those among them with spin >= spin_threshold.
+    Hydrogen is never a candidate, since H atoms are not treated as nuclear
+    spins around the muon (see gen_neighbouring_atomic_structure).
+
+    Args:
+        structure (ase.Atoms): the structure.
+        abundance_threshold (float): the threshold for the abundance, in %.
+        spin_threshold (float): the minimum spin for an isotope to be a candidate.
+        without_muon (bool): if True (default), the last atom of the structure
+            (the muon) is not considered.
+
+    Returns:
+        tuple: (info, candidate_isotopes). `info` maps each element symbol to the
+        list of isotopes with abundance > abundance_threshold. `candidate_isotopes`
+        is the list of those isotopes that have spin >= spin_threshold.
+    """
+    symbols = structure.get_chemical_symbols()
+    elements = np.unique(symbols[:-1] if without_muon else symbols)
+
+    # Collect relevant isotopes (i.e. abundance > abundance_threshold)
+    info = {}
+    for element in elements:
+        isotopes = Element(element).isotopes
+        info[element] = [ i for i in isotopes if i.abundance > abundance_threshold ]
+
+    candidate_isotopes = []
+    for element, abundant_isotopes in info.items():
+        if element == 'H':
+            continue
+        for isotope in abundant_isotopes:
+            if isotope.spin >= spin_threshold:
+                candidate_isotopes.append(isotope)
+
+    return info, candidate_isotopes
+
 def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
 
     ai,aj,d,D = neighbor_list('ijdD',atoms, 10.) # very large cutoff to get all possible interactions.
@@ -35,10 +74,14 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
 
     for i in range(len(D)):
 
+        # we want ai[i] to be the muon/H
         if not (ai[i] == len(atoms)-1):
             continue
 
+        # we want aj[i] to be the atom we are looking at (no muon/H)
         atom_symbol = atoms[aj[i]].symbol
+        if atom_symbol == 'H':
+            continue
 
         isotope_spin = spins[atom_symbol]
         # skip nuclei with no spin
@@ -99,7 +142,8 @@ def execute_auto_analysis(
         tf=True,
         algorithm: str = 'fast',
         powder_average = True,
-        angular_integration_steps: int = 7
+        angular_integration_steps: int = 7,
+        abundance_threshold: float = 5.,
     ):
     """
         Execute UNDI (mUon Nuclear Dipolar Interaction) analysis on a given atomic structure.
@@ -113,15 +157,17 @@ def execute_auto_analysis(
         powder_average (bool, optional): Wether to perform or not powder average. This is a time consuming task when B_mod /= 0.
         angular_integration_steps (int, optional):  Number of step in theta and phi for powder average. Default is 7.
                                                     Should be converged for accurate results.
+        abundance_threshold (float, optional): Only isotopes with abundance (in %) larger than this are considered. Default is 5.
         Returns:
         list: A list of dictionaries containing the analysis results for each cluster of isotopes.
         Raises:
         RuntimeError: If the muon does not appear as the last atom in the structure.
+        RuntimeError: If no isotope with spin is found in the structure.
         RuntimeError: If an appropriate Hilbert space could not be found.
         Notes:
         - The function performs safety checks, collects relevant isotopes, and computes results for each cluster.
         - It defines longitudinal field (LF) and transverse field (TF) directions and computes signals for each direction.
-        - If convergence_check is True, it performs an average over multiple iterations.
+        - If convergence_check is True, it performs an average over multiple iterations (for each cluster).
         - The function also computes powder averages for the signals.
         - Results are saved to 'results.json' if convergence_check is True.
         """
@@ -133,16 +179,18 @@ def execute_auto_analysis(
     if structure[-1].symbol.lower() != atom_as_muon.lower():
         raise RuntimeError("Muon should appear as last atom")
 
-    elements = np.unique(structure.get_chemical_symbols()[:-1])
-
-    # Collect relevant isotopes (i.e. abundance > 5%)
-    info = {}
-    for element in elements:
-        isotopes = Element(element).isotopes
-        info[element] = [ i for i in isotopes if i.abundance > 5.]
+    # Collect relevant isotopes (i.e. abundance > abundance_threshold)
+    info, isotope_list = check_enough_isotopes(structure, abundance_threshold)
+    if len(isotope_list) == 0:
+        raise RuntimeError(
+            "No isotopes with spin >= 0.49 found in the structure. "
+            "You can try to lower the abundance_threshold parameter.\n"
+            "Please consider that maybe you don't need to run the calculation: "
+            "the polarization will mostly be unaffected by the nuclear surrounding."
+        )
 
     # Time interval
-    t = np.linspace(0, 10e-6, 200)
+    t = np.linspace(0, 20e-6, 200)
 
     # Compute results for each cluster
     results = []
@@ -185,7 +233,7 @@ def execute_auto_analysis(
                 #NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
                 signal_z_lf += NS.celio_on_steroids(t,  k=4, algorithm=algorithm)
                 del NS
-            signal_z_lf /=6
+            signal_z_lf /= 5
 
             results.append(
                 {
@@ -205,7 +253,8 @@ def execute_auto_analysis(
                 }
             )
 
-            return results
+            # go on with the next cluster of isotopes
+            continue
 
         # Single crystal signals
 

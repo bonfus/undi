@@ -13,6 +13,15 @@ dependencies = [
     "scipy"
 ]
 
+[project.optional-dependencies]
+kubo_toyabe = [
+    "pandas",
+    "ase"
+]
+
+[tool.setuptools.package-data]
+"undi.kubo_toyabe" = ["*.txt"]
+
 [build-system]
 requires = [
     "setuptools>=42",
