@@ -180,7 +180,7 @@ def execute_auto_analysis(
         raise RuntimeError("Muon should appear as last atom")
 
     # Collect relevant isotopes (i.e. abundance > abundance_threshold)
-    info, isotope_list = check_enough_isotopes(structure, abundance_threshold, atom_as_muon)
+    info, isotope_list = check_enough_isotopes(structure, abundance_threshold, atom_as_muon=atom_as_muon)
     if len(isotope_list) == 0:
         raise RuntimeError(
             "No isotopes with spin >= 0.49 found in the structure. "
