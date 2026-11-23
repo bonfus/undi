@@ -52,7 +52,7 @@ def check_enough_isotopes(structure, abundance_threshold=5., spin_threshold=0.49
 
     return info, candidate_isotopes
 
-def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
+def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max, atom_as_muon):
 
     ai,aj,d,D = neighbor_list('ijdD',atoms, 10.) # very large cutoff to get all possible interactions.
                                                  # Actual selection is done below
@@ -80,7 +80,7 @@ def gen_neighbouring_atomic_structure(atoms, isotopes, spins, hdim_max):
 
         # we want aj[i] to be the atom we are looking at (no muon/H)
         atom_symbol = atoms[aj[i]].symbol
-        if atom_symbol == 'H':
+        if atom_symbol == atom_as_muon:
             continue
 
         isotope_spin = spins[atom_symbol]
@@ -213,7 +213,7 @@ def execute_auto_analysis(
             cluster_isotopes[e] = i.mass_number
 
 
-        undi_input, hdim = gen_neighbouring_atomic_structure(structure, cluster_isotopes, cluster_spins, max_hdim)
+        undi_input, hdim = gen_neighbouring_atomic_structure(structure, cluster_isotopes, cluster_spins, max_hdim, atom_as_muon)
         if hdim == 2:
             raise RuntimeError("Could not find appropriate Hilbert space! Either too many spins or none found!")
 
@@ -227,13 +227,13 @@ def execute_auto_analysis(
             # just return the z signal to be analyzed.
             print("Doing sample along Z, LF, convergence check")
             signal_z_lf = np.zeros_like(t)
-            for iteration in range(1,6):
+            for iteration in range(6):
                 # we do an average
                 NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
                 #NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
                 signal_z_lf += NS.celio_on_steroids(t,  k=4, algorithm=algorithm)
                 del NS
-            signal_z_lf /= 5
+            signal_z_lf /= 6
 
             results.append(
                 {
