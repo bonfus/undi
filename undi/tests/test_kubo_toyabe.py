@@ -33,13 +33,21 @@ def test_second_moments_single_species():
     assert moments[29] > 0.
 
 
-def test_second_moments_match_zero_field_distribution():
+def test_second_moments_match_analytical_formula():
     # a muon surrounded by three 19F (100% abundant, spin 1/2) at different distances
-    pos = [[1.2, 0, 0], [0, 1.9, 0], [0, 0, -2.5]]
-    nuclei = [{'Position': np.zeros(3), 'Label': 'mu'}] + \
-             [{'Position': np.array(p) * angtom, 'Label': 'F'} for p in pos]
-    expected = MuonNuclearInteraction(nuclei).zero_field_distribution_powder()
+    pos = np.array([[1.2, 0, 0], [0, 1.9, 0], [0, 0, -2.5]])
 
-    atms = Atoms('H' + 'F' * 3, positions=[[0, 0, 0]] + pos)
+    # gamma_mu^2 * Delta^2, secular dipolar interaction, powder average, zero field
+    hbar = 1.0545718e-34  # J s
+    mu_0 = 1.2566371e-6  # N A^-2
+    gamma_mu = MuonNuclearInteraction.gammas['mu']
+    gamma_F = MuonNuclearInteraction.gammas['F']
+    spin = 0.5
+    r3 = (np.linalg.norm(pos, axis=1) * angtom) ** 3
+    expected = gamma_mu ** 2 * np.sum(
+        2. * (mu_0 / (4 * np.pi)) ** 2 * ((gamma_F * hbar) / r3) ** 2
+        * (1. / 3.) * spin * (spin + 1))
+
+    atms = Atoms('H' + 'F' * 3, positions=np.vstack([[0, 0, 0], pos]))
     moments = KT.compute_second_moments(atms, cutoff_distances={9: 10.})
     assert np.isclose(sum(moments.values()), expected, rtol=1e-3)
