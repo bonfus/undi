@@ -59,6 +59,7 @@ def main():
     - --powder-average (bool, optional): Performs powder average. Default is True.
     - --algorithm (str, optional): Algorithm to be used for the analysis. Default is "fast".
     - --sample_size_average (int, optional): Number of random samples to for powder average. Default is 1000.
+    - --abundance-threshold (float, optional): Only isotopes with abundance (in %) larger than this are considered. Default is 5.
     - --dump (bool, optional): Flag to dump the results. Default is False.
     Returns:
     - results (dict): Dictionary with the results of the UNDI analysis.
@@ -75,8 +76,9 @@ def main():
     parser.add_argument('--powder-average', default=True, help='Perform powder average. Default is True.', action='store_true')
     parser.add_argument('--algorithm', type=str, default="fast", help='Algorithm to be used for the analysis. Default is "fast".')
     parser.add_argument('--angular-integration-steps', type=int, default=7, help='Angular grid for powder average. Default is 7.')
+    parser.add_argument('--abundance-threshold', type=float, default=5., help='Only isotopes with abundance (in %%) larger than this are considered. Default is 5.')
     parser.add_argument('--dump', type=bool, default=True, help='Flag to dump the results. Default is True.')
-     
+
     args = parser.parse_args()
     structure = args.structure
     Bmod = args.Bmod
@@ -87,6 +89,7 @@ def main():
     dump = args.dump
     powder_average = args.powder_average
     angular_integration_steps = args.angular_integration_steps
+    abundance_threshold = args.abundance_threshold
     lf=args.LF
     tf=args.TF
     
@@ -107,7 +110,8 @@ def main():
         lf=lf,
         tf=tf,
         powder_average=powder_average,
-        angular_integration_steps=angular_integration_steps
+        angular_integration_steps=angular_integration_steps,
+        abundance_threshold=abundance_threshold
     )
     
     if dump:

@@ -13,6 +13,11 @@ dependencies = [
     "scipy"
 ]
 
+[project.optional-dependencies]
+kubo_toyabe = [
+    "ase"
+]
+
 [build-system]
 requires = [
     "setuptools>=42",

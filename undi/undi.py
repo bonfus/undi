@@ -1132,70 +1132,6 @@ class MuonNuclearInteraction(object):
 
         return ( np.real_if_close(signal / self.Hdim ) )
 
-
-    def zero_field_distribution_powder(self, atoms=None):
-        """Calculates gamma_mu ^2 DeltaG ^2, where gamma_mu is the
-            gyromagnetic ratio of the muon and Delta^2 is the variance of
-            a Gaussian field distribution, using the secular approximation
-            for the dipolar interaction. Powder averaging and zero external
-            field are intended.
-
-        Returns
-        -------
-        float
-            gamma_mu ^2 DeltaG ^2. See above.
-        """
-
-        if atoms:
-            self.atoms = atoms
-
-        plank2pi = 1.0545718E-34 #joule second
-        mu_0 = 0.0000012566371 # (kilogram meter) ∕ (ampere^2 × second^2)
-        r = 0.
-        gamma_mu = 0.
-        pos_mu = None
-        for atom in self.atoms:
-            if atom['Label'] == 'mu':
-                gamma_mu = atom['Gamma']
-                pos_mu   = atom['Position']
-                break
-        else:
-            self.logger.warning('Multiple muons?! Only using last one in list')
-
-
-        for atom in self.atoms:
-            if atom['Label'] == 'mu':
-                continue
-            I = atom['Spin']
-            gamma = atom['Gamma']
-            r3 = np.linalg.norm(atom['Position'] - pos_mu)**3
-
-            r += 2. * (mu_0/(4*np.pi))**2    * \
-                ((gamma * plank2pi) / r3)**2 * \
-                0.33333333333 * (I * (I+1))
-
-        return r * (gamma_mu**2)
-
-    def kubo_toyabe(self, tlist):
-        """Calculates the Kubo-Toyabe polarization for the nuclear arrangement
-           provided in input.
-
-        Parameters
-        ----------
-        tlist : numpy.array
-            List of times at which the muon polarization is observed.
-
-        Returns
-        -------
-        numpy.array
-            Kubo-Toyabe function, for a powder in zero field.
-        """
-        # this is gamma_mu times sigma^2
-        Gmu_S2 = self.zero_field_distribution_powder()
-        return 0.333333333333 + 0.6666666666 * \
-                (1- Gmu_S2  *  np.power(tlist,2)) * \
-                np.exp( - 0.5 * Gmu_S2 * np.power(tlist,2))
-
     def get_approx_QLC_resonance_field(self):
         """
         Computes the approximate avoided level crossing resonance
@@ -1235,6 +1171,8 @@ if __name__ == '__main__':
     TODO: remove.
     """
     import matplotlib.pyplot as plt
+    from ase import Atoms
+    from undi.kubo_toyabe import KT
     SAVE_REFERENCE=False
     COMPARE_REFERENCE=False
 
@@ -1333,7 +1271,11 @@ if __name__ == '__main__':
         return y
 
     axes.plot(tlist, plot_brewer(tlist, r), label='F-mu-F Brewer', linestyle=':')
-    axes.plot(tlist, NS.kubo_toyabe(tlist), label='Kubo-Toyabe', linestyle=':')
+    # Kubo-Toyabe function: needs the second moment of the field distribution,
+    # computed for the same geometry (the muon is the H atom, positions in angstrom).
+    atms = Atoms('FHF', positions=[[0., 0., 0.], [0., 0., r/angtom], [0., 0., 2*r/angtom]])
+    Gmu_S2 = sum(KT.compute_second_moments(atms).values())
+    axes.plot(tlist, KT.kubo_toyabe(tlist, Gmu_S2), label='Kubo-Toyabe', linestyle=':')
 
     ticks = np.round(axes.get_xticks()*10.**6)
     axes.set_xticklabels(ticks)
