@@ -14,8 +14,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-kubo_toyabe = [
-    "ase"
+undi = [
+    "ase",
+    "tqdm"
 ]
 
 [build-system]

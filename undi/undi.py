@@ -1171,7 +1171,6 @@ if __name__ == '__main__':
     TODO: remove.
     """
     import matplotlib.pyplot as plt
-    from ase import Atoms
     from undi.kubo_toyabe import KT
     SAVE_REFERENCE=False
     COMPARE_REFERENCE=False
@@ -1272,9 +1271,7 @@ if __name__ == '__main__':
 
     axes.plot(tlist, plot_brewer(tlist, r), label='F-mu-F Brewer', linestyle=':')
     # Kubo-Toyabe function: needs the second moment of the field distribution,
-    # computed for the same geometry (the muon is the H atom, positions in angstrom).
-    atms = Atoms('FHF', positions=[[0., 0., 0.], [0., 0., r/angtom], [0., 0., 2*r/angtom]])
-    Gmu_S2 = sum(KT.compute_second_moments(atms).values())
+    Gmu_S2 = KT.zero_field_distribution_powder(atoms)
     axes.plot(tlist, KT.kubo_toyabe(tlist, Gmu_S2), label='Kubo-Toyabe', linestyle=':')
 
     ticks = np.round(axes.get_xticks()*10.**6)

@@ -13,6 +13,49 @@ from tqdm import tqdm
 
 angtom = 1e-10
 
+munhbar = 7.622593285e6 * 2 * np.pi  # mu_N/hbar, SI
+# (2/3)(μ_0/4pi)^2 (planck2pi 2pi × 135.5 MHz/T )^2 = 5.374 021 39 × 10^(−65) kg²·m^(6)·A^(−2)·s^(−4)
+factor = 5.37402139e-5  # angstrom instead of m
+
+
+def get_isotopes(Z):
+    """Abundance (%), spin and g-factor of all the isotopes of the element with atomic number Z."""
+    isotopes = Element.info[Element.info.Z == Z]
+    return np.column_stack(
+        [isotopes.Abundance, isotopes.Spin, isotopes.G_factor]
+    ).astype(float)
+
+
+def compute_second_moments(atms, cutoff_distances={}):
+    """
+    Compute second moments taking care of isotope averages.
+    """
+    tot_H = np.count_nonzero(atms.get_atomic_numbers() == 1)
+
+    species_avg = {}
+    for e in np.unique(atms.get_atomic_numbers()):
+        if e == 1:
+            continue
+
+        species_avg[e] = 0.0
+        for a in get_isotopes(e):
+            species_avg[e] += (a[0] / 100) * a[1] * (a[1] + 1) * (munhbar * a[2]) ** 2
+
+    # compute second moments
+    specie_contribs = {}
+    for e in np.unique(atms.get_atomic_numbers()):
+        if e == 1:
+            continue
+        sum = 0.5 * np.sum(
+            neighborlist.neighbor_list(
+                "d", atms, cutoff={(1, e): cutoff_distances.get(e, 40)}
+            )
+            ** -6
+        )
+        specie_contribs[e] = species_avg[e] * sum * factor / tot_H
+
+    return specie_contribs
+
 def check_enough_isotopes(structure, abundance_threshold=5., spin_threshold=0.49, without_muon=True, atom_as_muon='H'):
     """Collect the relevant isotopes and check that at least one of them has spin.
 
