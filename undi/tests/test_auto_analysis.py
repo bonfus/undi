@@ -104,3 +104,32 @@ def test_abundance_threshold_changes_clusters(monkeypatch):
     results = execute_auto_analysis(
         cu_mu(), convergence_check=True, abundance_threshold=50.)
     assert [r['cluster_isotopes']['Cu'] for r in results] == [63]
+
+
+class RecordingInteraction(FakeInteraction):
+    """Records the keyword arguments of every call of the C++ algorithm."""
+    kwargs_seen = []
+
+    def celio_on_steroids(self, t, *args, **kwargs):
+        RecordingInteraction.kwargs_seen.append(kwargs)
+        return np.ones_like(t)
+
+
+@pytest.mark.parametrize('single_precision', [False, True])
+@pytest.mark.parametrize('convergence_check, B_mod', [(True, 0.0), (False, 0.0), (False, 0.002)])
+def test_single_precision_reaches_every_call_of_the_algorithm(monkeypatch, single_precision, convergence_check, B_mod):
+    """Zero field, field with powder average, convergence check: all the calls use the requested precision."""
+    monkeypatch.setattr(aa, 'MuonNuclearInteraction', RecordingInteraction)
+    RecordingInteraction.kwargs_seen = []
+    execute_auto_analysis(
+        cu_mu(), B_mod=B_mod, convergence_check=convergence_check, angular_integration_steps=2,
+        single_precision=single_precision)
+    assert RecordingInteraction.kwargs_seen
+    assert {call['single_precision'] for call in RecordingInteraction.kwargs_seen} == {single_precision}
+
+
+def test_double_precision_is_the_default(monkeypatch):
+    monkeypatch.setattr(aa, 'MuonNuclearInteraction', RecordingInteraction)
+    RecordingInteraction.kwargs_seen = []
+    execute_auto_analysis(cu_mu(), convergence_check=True)
+    assert {call['single_precision'] for call in RecordingInteraction.kwargs_seen} == {False}
