@@ -47,7 +47,7 @@ def read_magres_file(filename):
     atms.set_array('efg', EFGs)
     return atms
 
-def main():
+def main(argv=None):
     """
     Main function to parse arguments and execute the UNDI analysis.
     Arguments:
@@ -70,7 +70,7 @@ def main():
     parser.add_argument('--max-hdim', type=int, default=1e3, help='Dimension of the Hilbert space. Increase to have better results. Default is 1000.')
     parser.add_argument('--atom-as-muon', type=str, default="H", help='Atom to be considered as muon. Default is "H".')
     parser.add_argument('--Bmod', type=float, default=0., help='Magnetic field modulus. Default is 0.0.')
-    parser.add_argument('--convergence-check', type=bool, default=False, help='Flag to check for convergence. Default is False.')
+    parser.add_argument('--convergence-check', action='store_true', help='Flag to check for convergence. Default is False.')
     parser.add_argument('--TF', default=True, help='Perform simulation with transverse field. Default is True.', action='store_true')
     parser.add_argument('--LF', default=True, help='Perform simulation with longitudinal field. Default is True.', action='store_true')
     parser.add_argument('--powder-average', default=True, help='Perform powder average. Default is True.', action='store_true')
@@ -79,7 +79,7 @@ def main():
     parser.add_argument('--abundance-threshold', type=float, default=5., help='Only isotopes with abundance (in %%) larger than this are considered. Default is 5.')
     parser.add_argument('--dump', type=bool, default=True, help='Flag to dump the results. Default is True.')
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     structure = args.structure
     Bmod = args.Bmod
     convergence_check = args.convergence_check
@@ -120,4 +120,5 @@ def main():
             
     return results
 
-main()
+if __name__ == '__main__':
+    main()

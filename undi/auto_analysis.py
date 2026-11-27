@@ -47,7 +47,7 @@ def compute_second_moments(atms, cutoff_distances={}):
         if e == 1:
             continue
         sum = 0.5 * np.sum(
-            neighborlist.neighbor_list(
+            neighbor_list(
                 "d", atms, cutoff={(1, e): cutoff_distances.get(e, 40)}
             )
             ** -6
