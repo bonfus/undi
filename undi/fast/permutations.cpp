@@ -1,7 +1,9 @@
 /* ===  Compute indexes and permutaions === */
 
 #include <cstddef>
+#if defined(_OPENMP)
 #include <omp.h>
+#endif
 #include "permutations.hpp"
 
 /* computes the dimensions of the Hilbert space */
@@ -45,10 +47,13 @@ void swap(size_t *arr, size_t a, size_t b) {
 }
 
 void omp_split_computation(size_t hdim, size_t * dims_ptr, size_t * prods_ptr, size_t nspins, size_t * idx_nd, size_t &start, size_t &end) {
-
+#if defined(_OPENMP)
     int tid = omp_get_thread_num();
     int nthreads = omp_get_num_threads();
-
+#else
+    int tid = 0;
+    int nthreads = 1;
+#endif
     if (nthreads == 1) {
         // serial version is easy, start from 0
         for (size_t i=0; i < nspins; i++)

@@ -1,7 +1,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/complex.h>
+#if defined(__OPENMP)
 #include <omp.h>
+#endif
 
 #if defined(__MKL)
 #define MKL_Complex8 std::complex<float>
