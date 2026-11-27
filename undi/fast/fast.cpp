@@ -3,6 +3,7 @@
 #include <pybind11/complex.h>
 
 #include "handler.hpp"
+#include "threads.hpp"
 #include "permutations.hpp"
 
 namespace py = pybind11;
@@ -167,4 +168,6 @@ PYBIND11_MODULE(fast_quantum, m) {
             py::arg("op").noconvert(), py::arg("psi").noconvert(), py::arg("aux").noconvert(),
             py::arg("spin"), py::arg("h"),
             "Evolves wavefunction in the Celio approach. The order in the Hilbert space must be ... x Nucleus x Muon");
+    m.def("max_threads", &max_threads,
+          "Maximum number of OpenMP threads used (1 if built without OpenMP)");
 }

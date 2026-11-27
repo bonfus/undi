@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
+import importlib
 import logging
+import os
 import numpy as np
 from numpy import pi
 import functools as ft
@@ -10,6 +12,34 @@ from copy import deepcopy
 from fractions import Fraction
 
 from undi.isotopes import Element as element
+
+# C++ implementations of Celio's algorithm, by name of the `algorithm` argument.
+_CPP_MODULES = {'fat': 'fast_quantum_blas', 'light': 'fast_quantum_light', 'fast': 'fast_quantum'}
+_REPORTED_BACKENDS = set()
+
+
+def _report_backend(algorithm, single_precision):
+    """Print (once per process and configuration) which C++ module runs, with how many OpenMP threads.
+
+    It tells, in the output of a job, that the compiled code is used and how parallel it is. The number of threads
+    is the one the extension will use (`OMP_NUM_THREADS`); old builds do not tell it.
+    """
+    key = (algorithm, bool(single_precision))
+    if key in _REPORTED_BACKENDS:
+        return
+    _REPORTED_BACKENDS.add(key)
+
+    module = importlib.import_module(_CPP_MODULES[algorithm])
+    max_threads = getattr(module, 'max_threads', None)
+    threads = str(max_threads()) if max_threads else 'unknown (rebuild undi)'
+    try:
+        import omprnd  # noqa: F401
+        random_numbers = 'omprnd'
+    except ImportError:
+        random_numbers = 'numpy (omprnd not found)'
+    print("[undi] C++ module {} ({}); OpenMP threads: {} (OMP_NUM_THREADS={}); precision: {}; random numbers: {}".format(
+        module.__name__, getattr(module, '__file__', '?'), threads, os.environ.get('OMP_NUM_THREADS', 'not set'),
+        'single' if single_precision else 'double', random_numbers), flush=True)
 
 
 qdot = lambda x,y : np.dot(x[0],y[0]) + np.dot(x[1],y[1]) + np.dot(x[2],y[2])
@@ -631,6 +661,8 @@ class MuonNuclearInteraction(object):
                     psi[idxswap[s:e]] = np.dot(o , psi[idxswap[s:e]])
         else:
             raise RuntimeError("Unknown algorithm!")
+
+        _report_backend(algorithm, single_precision)
 
         # Import optional progress bar
         try:

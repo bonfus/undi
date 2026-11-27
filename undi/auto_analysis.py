@@ -187,6 +187,7 @@ def execute_auto_analysis(
         powder_average = True,
         angular_integration_steps: int = 7,
         abundance_threshold: float = 5.,
+        single_precision: bool = False,
     ):
     """
         Execute UNDI (mUon Nuclear Dipolar Interaction) analysis on a given atomic structure.
@@ -201,6 +202,8 @@ def execute_auto_analysis(
         angular_integration_steps (int, optional):  Number of step in theta and phi for powder average. Default is 7.
                                                     Should be converged for accurate results.
         abundance_threshold (float, optional): Only isotopes with abundance (in %) larger than this are considered. Default is 5.
+        single_precision (bool, optional): Run the C++ algorithm in single precision (float32): about half the memory and
+                                           faster, with a small loss of accuracy. Default is False.
         Returns:
         list: A list of dictionaries containing the analysis results for each cluster of isotopes.
         Raises:
@@ -274,7 +277,7 @@ def execute_auto_analysis(
                 # we do an average
                 NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
                 #NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-                signal_z_lf += NS.celio_on_steroids(t,  k=4, algorithm=algorithm)
+                signal_z_lf += NS.celio_on_steroids(t,  k=4, algorithm=algorithm, single_precision=single_precision)
                 del NS
             signal_z_lf /= 6
 
@@ -317,7 +320,7 @@ def execute_auto_analysis(
             ### LF
             NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
             NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-            signal_z_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            signal_z_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm, single_precision=single_precision)
             del NS
 
             ## signal x
@@ -326,7 +329,7 @@ def execute_auto_analysis(
             print("Doing sample along X, LF")
             NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
             NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-            signal_x_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            signal_x_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm, single_precision=single_precision)
             del NS
 
             ## signal y
@@ -335,7 +338,7 @@ def execute_auto_analysis(
             print("Doing sample along Y, LF")
             NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
             NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-            signal_y_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            signal_y_lf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm, single_precision=single_precision)
             del NS
 
 
@@ -350,7 +353,7 @@ def execute_auto_analysis(
             print("Doing sample along Z, TF")
             NS = MuonNuclearInteraction(undi_input,external_field=B_tf)
             NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-            signal_z_tf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            signal_z_tf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm, single_precision=single_precision)
             del NS
 
             # X
@@ -358,7 +361,7 @@ def execute_auto_analysis(
             print("Doing sample along X, TF")
             NS = MuonNuclearInteraction(undi_input,external_field=B_tf)
             NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-            signal_x_tf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            signal_x_tf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm, single_precision=single_precision)
             del NS
 
             # Y
@@ -366,7 +369,7 @@ def execute_auto_analysis(
             print("Doing sample along Y, TF")
             NS = MuonNuclearInteraction(undi_input,external_field=B_tf)
             NS.translate_rotate_sample_vec(direction) # translate_rotate_sample_by_vec
-            signal_y_tf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm)
+            signal_y_tf = NS.celio_on_steroids(t,  k=2, algorithm=algorithm, single_precision=single_precision)
             del NS
 
         if zf:
@@ -410,13 +413,13 @@ def execute_auto_analysis(
                         if lf:
                             NS = MuonNuclearInteraction(undi_input,external_field=B_lf)
                             NS.translate_rotate_sample_vec(direction)
-                            powder_signal_lf += np.sin(theta) * NS.celio_on_steroids(t,  k=2, algorithm=algorithm, progress = False)
+                            powder_signal_lf += np.sin(theta) * NS.celio_on_steroids(t,  k=2, algorithm=algorithm, single_precision=single_precision, progress = False)
                             del NS
 
                         if tf:
                             NS = MuonNuclearInteraction(undi_input,external_field=B_tf)
                             NS.translate_rotate_sample_vec(direction)
-                            powder_signal_tf += np.sin(theta) * NS.celio_on_steroids(t,  k=2, algorithm=algorithm, progress = False)
+                            powder_signal_tf += np.sin(theta) * NS.celio_on_steroids(t,  k=2, algorithm=algorithm, single_precision=single_precision, progress = False)
                             del NS
 
 

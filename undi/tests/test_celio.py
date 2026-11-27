@@ -64,3 +64,17 @@ def test_small_system():
     #np.savetxt('/tmp/aaaa', signal_Cu)
 
 
+
+
+@pytest.mark.parametrize('algorithm', ['fast', 'light'])
+def test_single_precision_agrees_with_double(algorithm):
+    """The float32 evolution of the C++ algorithms gives the same polarization, within single precision accuracy."""
+    pytest.importorskip({'fast': 'fast_quantum', 'light': 'fast_quantum_light'}[algorithm])
+    t = np.linspace(0, 16e-6, 100)
+    NS = MuonNuclearInteraction(small_atoms, log_level='info')
+
+    np.random.seed(12)
+    double = NS.celio_on_steroids(t, k=1, single_precision=False, algorithm=algorithm)
+    np.random.seed(12)
+    single = NS.celio_on_steroids(t, k=1, single_precision=True, algorithm=algorithm)
+    np.testing.assert_allclose(single, double, atol=1e-5)

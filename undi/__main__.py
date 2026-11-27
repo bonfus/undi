@@ -61,6 +61,7 @@ def main(argv=None):
     - --sample_size_average (int, optional): Number of random samples to for powder average. Default is 1000.
     - --abundance-threshold (float, optional): Only isotopes with abundance (in %) larger than this are considered. Default is 5.
     - --dump (bool, optional): Flag to dump the results. Default is False.
+    - --single-precision: Run the C++ algorithm in single precision (float32). Default is double precision.
     Returns:
     - results (dict): Dictionary with the results of the UNDI analysis.
     """
@@ -78,6 +79,7 @@ def main(argv=None):
     parser.add_argument('--angular-integration-steps', type=int, default=7, help='Angular grid for powder average. Default is 7.')
     parser.add_argument('--abundance-threshold', type=float, default=5., help='Only isotopes with abundance (in %%) larger than this are considered. Default is 5.')
     parser.add_argument('--dump', type=bool, default=True, help='Flag to dump the results. Default is True.')
+    parser.add_argument('--single-precision', action='store_true', help='Run the C++ algorithm in single precision (float32): about half the memory and faster, with a small loss of accuracy. Default is double precision.')
 
     args = parser.parse_args(argv)
     structure = args.structure
@@ -111,7 +113,8 @@ def main(argv=None):
         tf=tf,
         powder_average=powder_average,
         angular_integration_steps=angular_integration_steps,
-        abundance_threshold=abundance_threshold
+        abundance_threshold=abundance_threshold,
+        single_precision=args.single_precision,
     )
     
     if dump:

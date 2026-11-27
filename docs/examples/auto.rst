@@ -16,6 +16,34 @@ is also performed.
 A json file named `results.json` is produced by the code and contains
 both zero-field, longitudinal and transverse field results.
 
+Speed and precision
+-------------------
+
+The time evolution runs in the C++ extension (`fast_quantum`, OpenMP parallel).
+At the beginning of the run, the code prints one line saying which module is used,
+how many OpenMP threads it will use and in which precision, for example
+
+```
+[undi] C++ module fast_quantum (.../fast_quantum.cpython-312-x86_64-linux-gnu.so); OpenMP threads: 4 (OMP_NUM_THREADS=4); precision: single; random numbers: omprnd
+```
+
+The number of threads is set by the `OMP_NUM_THREADS` environment variable
+(all the cores of the machine if it is not set). The line tells "unknown (rebuild undi)" if
+the extension was built before this information was added.
+
+The `--single-precision` flag runs the evolution in single precision (`float32`):
+it halves the memory footprint and is faster, with a small loss of accuracy
+(see `undi/tests/test_celio.py`). Double precision is the default.
+
+```
+OMP_NUM_THREADS=4 python -m undi --max-hdim 1000000 --single-precision structure-or-magres-file
+```
+
+The cost depends mostly on the number of evolutions: at zero field the
+three single-crystal signals, at finite field the six single-crystal ones plus
+the powder average, which needs `(n-1) x 2n` orientations for both the
+longitudinal and the transverse field (with `--angular-integration-steps n`).
+
 
 Approximations
 --------------

@@ -12,6 +12,7 @@
 #include <iostream>
 #include "permutations.hpp"
 #include "handler.hpp"
+#include "threads.hpp"
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
 
@@ -299,4 +300,6 @@ PYBIND11_MODULE(fast_quantum_blas, m) {
             py::arg("op").noconvert(), py::arg("psi").noconvert(), py::arg("aux").noconvert(),
             py::arg("spin"), py::arg("h"),
             "Evolves wavefunction in the Celio approach. The order in the Hilbert space must be ... x Nucleus x Muon");
+    m.def("max_threads", &max_threads,
+          "Maximum number of OpenMP threads used (1 if built without OpenMP)");
 }

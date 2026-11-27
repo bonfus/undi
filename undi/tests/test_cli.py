@@ -64,3 +64,11 @@ def test_results_are_dumped_to_json(structure, analysis, monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     results = undi_cli.main([structure, '--Bmod', '0.5'])
     assert json.loads((tmp_path / 'results.json').read_text()) == results
+
+
+def test_single_precision_is_a_flag(structure, analysis, monkeypatch, tmp_path):
+    """Double precision by default; `--single-precision` asks for float32."""
+    monkeypatch.chdir(tmp_path)
+    undi_cli.main([structure])
+    undi_cli.main([structure, '--single-precision'])
+    assert [call['single_precision'] for call in analysis] == [False, True]
