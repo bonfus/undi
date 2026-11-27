@@ -5,7 +5,9 @@
 #include "handler.hpp"
 #include "threads.hpp"
 #include "permutations.hpp"
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 
 namespace py = pybind11;
 using namespace std;
@@ -137,9 +139,12 @@ void evolve(py::array_t<std::complex<T>, py::array::c_style> op,
     std::complex<T> *r0 = new std::complex<T>[op_dim];
     size_t idxes_ptr[op_dim];
     size_t idx_nd[nspins];
-
+#ifdef _OPENMP
     int tid = omp_get_thread_num();
     int nthreads = omp_get_num_threads();
+#else
+    int tid = 0; int nthreads = 1;
+#endif
     size_t chunk = steps / nthreads;
     size_t start = chunk * tid;
     size_t end = start + chunk;

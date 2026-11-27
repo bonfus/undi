@@ -1,7 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/complex.h>
-#if defined(__OPENMP)
+#ifdef _OPENMP
 #include <omp.h>
 #endif
 
