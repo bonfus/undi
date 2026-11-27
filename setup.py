@@ -71,6 +71,14 @@ MKL_I = os.getenv("MKL_INCLUDE", "/opt/intel/oneapi/mkl/latest/include/")
 
 def get_openmp_flags():
     """Get OpenMP compiler and linker flags"""
+    if sys.platform == "darwin":
+        # No OpenMP
+        return {
+            'compile': [],
+            'link': [],
+            'libraries': []
+        }
+        
     flags = {
         'compile': ['-fopenmp'],
         'link': ['-fopenmp'],
